@@ -1,0 +1,763 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir> <env-dir>
+
+### Configure environment
+
+set -o errexit    # always exit on error
+set -o pipefail   # don't ignore exit codes when piping output
+unset GIT_DIR     # Avoid GIT_DIR leak from previous build steps
+
+[ "$BUILDPACK_XTRACE" ] && set -o xtrace
+
+### Constants
+
+# This is used by the buildpack stdlib for metrics
+# shellcheck disable=SC2034
+BPLOG_PREFIX="buildpack.nodejs"
+
+### Configure directories
+
+BUILD_DIR="${1:-}/client"
+CACHE_DIR=${2:-}
+ENV_DIR=${3:-}
+BP_DIR=$(cd "$(dirname "${0:-}")"; cd ..; pwd)
+
+### Load dependencies
+
+# shellcheck source=lib/vendor/stdlib_v7.sh
+source "$BP_DIR/lib/vendor/stdlib_v7.sh"
+# shellcheck source=lib/output.sh
+source "$BP_DIR/lib/output.sh"
+# shellcheck source=lib/monitor.sh
+source "$BP_DIR/lib/monitor.sh"
+# shellcheck source=lib/environment.sh
+source "$BP_DIR/lib/environment.sh"
+# shellcheck source=lib/failure.sh
+source "$BP_DIR/lib/failure.sh"
+# shellcheck source=lib/binaries.sh
+source "$BP_DIR/lib/binaries.sh"
+# shellcheck source=lib/json.sh
+source "$BP_DIR/lib/json.sh"
+# shellcheck source=lib/cache.sh
+source "$BP_DIR/lib/cache.sh"
+# shellcheck source=lib/dependencies.sh
+source "$BP_DIR/lib/dependencies.sh"
+# shellcheck source=lib/plugin.sh
+source "$BP_DIR/lib/plugin.sh"
+# shellcheck source=lib/uuid.sh
+source "$BP_DIR/lib/uuid.sh"
+# shellcheck source=lib/kvstore.sh
+source "$BP_DIR/lib/kvstore.sh"
+# shellcheck source=lib/metadata.sh
+source "$BP_DIR/lib/metadata.sh"
+# shellcheck source=lib/features.sh
+source "$BP_DIR/lib/features.sh"
+# shellcheck source=lib/builddata.sh
+source "$BP_DIR/lib/builddata.sh"
+# shellcheck source=lib/yarn-2.sh
+source "$BP_DIR/lib/yarn-2.sh"
+
+export PATH="$BUILD_DIR/.heroku/node/bin:$BUILD_DIR/.heroku/yarn/bin":$PATH
+
+LOG_FILE=$(mktemp -t node-build-log.XXXXX)
+echo "" > "$LOG_FILE"
+
+build_start_time=$(nowms)
+
+### Handle errors
+
+handle_failure() {
+  meta_set "node-build-success" "false"
+  header "Build failed"
+  fail_using_yarn2_with_yarn_production_environment_variable_set "$LOG_FILE"
+  fail_yarn_outdated "$LOG_FILE"
+  fail_yarn_lockfile_outdated "$LOG_FILE"
+  fail_node_install "$LOG_FILE" "$BUILD_DIR"
+  fail_yarn_install "$LOG_FILE" "$BUILD_DIR"
+  fail_invalid_semver "$LOG_FILE"
+  log_other_failures "$LOG_FILE"
+  warn_aws_proxy "$BUILD_DIR"
+  warn_untracked_dependencies "$LOG_FILE"
+  warn_angular_resolution "$LOG_FILE"
+  warn_missing_devdeps "$LOG_FILE" "$BUILD_DIR"
+  warn_econnreset "$LOG_FILE"
+  log_meta_data >> "$BUILDPACK_LOG_FILE"
+  failure_message | output "$LOG_FILE"
+}
+trap 'handle_failure' ERR
+
+### Initalize metadata store
+# Create the metadata store
+meta_init "$CACHE_DIR"
+# Make sure that it's empty and save any previous build's data
+meta_setup
+# the "build-step" key keeps track of where we are in the execution
+# so that we can see where failed builds errored
+meta_set "build-step" "init"
+
+### Check initial state
+
+[ -e "$BUILD_DIR/node_modules" ] && PREBUILD=true || PREBUILD=false
+[ -f "$BUILD_DIR/yarn.lock" ] && YARN=true || YARN=false
+[ -f "$BUILD_DIR/package-lock.json" ] && NPM_LOCK=true || NPM_LOCK=false
+YARN_2=$(detect_yarn_2 "$YARN" "$BUILD_DIR")
+
+### Save build info
+features_init "nodejs" "$BUILD_DIR" "$CACHE_DIR" "$BP_DIR/features"
+log_initial_state
+generate_uuids
+
+### Failures that should be caught immediately
+
+fail_dot_heroku "$BUILD_DIR"
+fail_dot_heroku_node "$BUILD_DIR"
+fail_invalid_package_json "$BUILD_DIR"
+fail_multiple_lockfiles "$BUILD_DIR"
+fail_iojs_unsupported "$BUILD_DIR"
+warn_prebuilt_modules "$BUILD_DIR"
+warn_missing_package_json "$BUILD_DIR"
+
+### Gather more project information
+
+# we know that package.json is valid json, and can pull more data out
+log_project_info "$BUILD_DIR"
+
+### Compile
+
+create_env() {
+  write_profile "$BP_DIR" "$BUILD_DIR"
+  write_export "$BP_DIR" "$BUILD_DIR"
+  export_env_dir "$ENV_DIR"
+  create_default_env "$YARN"
+}
+
+header "Creating runtime environment" | output "$LOG_FILE"
+
+mkdir -p "$BUILD_DIR/.heroku/node/"
+cd "$BUILD_DIR"
+create_env # can't pipe the whole thing because piping causes subshells, preventing exports
+list_node_config | output "$LOG_FILE"
+create_build_env
+
+
+### Configure vendored package manager
+export VENDOR_PATH
+
+if [[ "$YARN_2" == "true" ]]; then
+  if [[ -f "$BUILD_DIR/.npmrc" ]]; then
+    warn "There is an existing .npmrc file that will not be used. All configurations are read from the .yarnrc.yml file." "https://devcenter.heroku.com/articles/migrating-to-yarn-2"
+  fi
+
+  if [[ -f "$BUILD_DIR/.yarnrc" ]]; then
+    warn "There is an existing .yarnrc file that will not be used. All configurations are read from the .yarnrc.yml file." "https://devcenter.heroku.com/articles/migrating-to-yarn-2"
+  fi
+
+  # When in Plug'n'Play mode the yarn cache will include dependencies needed at
+  # runtime; the cache must live in /app (not /tmp) so that dependencies are
+  # persisted. When using zero-install, /app/.yarn/cache will include all
+  # dependencies which yarn should reuse.
+  if use_yarn_app_cache "$BUILD_DIR"; then
+    YARN_CACHE_FOLDER=${YARN_CACHE_FOLDER:-"$BUILD_DIR/.yarn/cache"}
+  fi
+
+  # When in zero-install mode, use --immutable-cache to verify that the cache
+  # is pristine. Cache mutation is expected in nonzero installs.
+  if has_yarn_cache "$BUILD_DIR"; then
+    YARN_ENABLE_IMMUTABLE_CACHE=${YARN_ENABLE_IMMUTABLE_CACHE:-true}
+  fi
+
+  meta_set "yarn2-immutable-cache" ${YARN_ENABLE_IMMUTABLE_CACHE:-false}
+
+  if node_modules_enabled "$BUILD_DIR"; then
+    meta_set "yarn2-pnp-linker" "false"
+  else
+    meta_set "yarn2-pnp-linker" "true"
+  fi
+
+  ### Configure Yarn 2
+  # fail for no yarnrc.yml
+  fail_missing_yarnrc_yml "$BUILD_DIR"
+
+  # get yarn_path
+  VENDOR_PATH=$(get_yarn_path "$BUILD_DIR")
+
+  # fail for no yarnPath in rc
+  fail_missing_yarn_path "$BUILD_DIR" "$VENDOR_PATH"
+
+  # fail for missing yarn in .yarn/releases
+  fail_missing_yarn_vendor "$BUILD_DIR" "$VENDOR_PATH"
+fi
+
+### Configure package manager cache directories
+[ ! "$YARN_CACHE_FOLDER" ] && YARN_CACHE_FOLDER=$(mktemp -d -t yarncache.XXXXX)
+[ ! "$NPM_CONFIG_CACHE" ] && NPM_CONFIG_CACHE=$(mktemp -d -t npmcache.XXXXX)
+export YARN_CACHE_FOLDER NPM_CONFIG_CACHE
+
+install_bins() {
+  local node_engine npm_engine yarn_engine npm_version node_version
+
+  node_engine=$(read_json "$BUILD_DIR/package.json" ".engines.node")
+  npm_engine=$(read_json "$BUILD_DIR/package.json" ".engines.npm")
+  yarn_engine=$(read_json "$BUILD_DIR/package.json" ".engines.yarn")
+
+  if [[ "$YARN_2" == "true" && -n "$yarn_engine" ]]; then
+    warn "You don't need to specify Yarn engine. Heroku will install the latest Yarn 1.x, so that per project version can be used. More information here: https://yarnpkg.com/getting-started/install#global-install"
+    unset yarn_engine
+  fi
+
+  meta_set "node-version-request" "$node_engine"
+  meta_set "npm-version-request" "$npm_engine"
+  meta_set "yarn-version-request" "$yarn_engine"
+
+  echo "engines.node (package.json):  ${node_engine:-unspecified}"
+  echo "engines.npm (package.json):   ${npm_engine:-unspecified (use default)}"
+  if $YARN || [ -n "$yarn_engine" ]; then
+    echo "engines.yarn (package.json):  ${yarn_engine:-unspecified (use default)}"
+  fi
+  echo ""
+
+  warn_node_engine "$node_engine"
+
+  meta_set "build-step" "install-nodejs"
+  monitor "install-node-binary" install_nodejs "$node_engine" "$BUILD_DIR/.heroku/node"
+
+  meta_set "build-step" "install-npm"
+  monitor "install-npm-binary" install_npm "$npm_engine" "$BUILD_DIR/.heroku/node" $NPM_LOCK
+
+  node_version="$(node --version)"
+  mcount "version.node.$node_version"
+  meta_set "node-version" "$node_version"
+
+  # Download yarn if there is a yarn.lock file or if the user
+  # has specified a version of yarn under "engines". We'll still
+  # only install using yarn if there is a yarn.lock file
+  if $YARN || [ -n "$yarn_engine" ]; then
+    meta_set "build-step" "install-yarn"
+    monitor "install-yarn-binary" install_yarn "$BUILD_DIR/.heroku/yarn" "$yarn_engine"
+  fi
+
+  if $YARN; then
+    mcount "version.yarn.$(yarn --version)"
+    meta_set "yarn-version" "$(yarn --version)"
+  else
+    mcount "version.npm.$(npm --version)"
+    meta_set "npm-version" "$(npm --version)"
+  fi
+
+  warn_old_npm
+
+  if [[ $YARN_2 == true ]]; then
+    YARN=false
+  fi
+}
+
+header "Installing binaries" | output "$LOG_FILE"
+install_bins | output "$LOG_FILE"
+
+if [[ -z "$USE_NPM_INSTALL" ]]; then
+  if [[ "$(should_use_npm_ci "$BUILD_DIR")" == "true" ]]; then
+    USE_NPM_INSTALL=false
+  else
+    USE_NPM_INSTALL=true
+  fi
+fi
+
+restore_cache() {
+  local cache_status cache_directories restore_cache_start_time
+  restore_cache_start_time=$(nowms)
+
+  cache_status="$(get_cache_status "$CACHE_DIR")"
+  cache_directories="$(get_cache_directories "$BUILD_DIR")"
+
+  if $YARN; then
+    if $PREBUILD && [[ "$SKIP_NODE_MODULES_CHECK" == "true" ]]; then
+      echo "Keeping existing node_modules because SKIP_NODE_MODULES_CHECK=${SKIP_NODE_MODULES_CHECK}"
+    elif $PREBUILD; then
+      warn "node_modules checked into source control" "https://devcenter.heroku.com/articles/node-best-practices#only-git-the-important-bits"
+      rm -rf "$BUILD_DIR/node_modules"
+    fi
+  fi
+
+  if [[ "$cache_status" == "disabled" ]]; then
+    header "Restoring cache"
+    echo "Caching has been disabled because NODE_MODULES_CACHE=${NODE_MODULES_CACHE}"
+  elif [[ "$cache_status" == "valid" ]]; then
+    header "Restoring cache"
+    if [[ "$cache_directories" == "" ]]; then
+      restore_default_cache_directories "$BUILD_DIR" "$CACHE_DIR" "$YARN_CACHE_FOLDER" "$NPM_CONFIG_CACHE"
+    else
+      restore_custom_cache_directories "$BUILD_DIR" "$CACHE_DIR" "$cache_directories"
+    fi
+  elif [[ "$cache_status" == "new-signature" ]]; then
+    header "Restoring cache"
+    if [[ "$cache_directories" == "" ]]; then
+      echo "Cached directories were not restored due to a change in version of node, npm, yarn or stack"
+      echo "Module installation may take longer for this build"
+    else
+      # If the user has specified custom cache directories, be more explicit
+      echo "Invalidating cache due to a change in version of node, npm, yarn or stack"
+      echo "Will not restore the following directories for this build:"
+      for directory in $cache_directories; do
+        echo "  $directory"
+      done
+    fi
+  else
+    # No cache exists, be silent
+    :
+  fi
+
+  mcount "cache.$cache_status"
+  meta_set "cache-status" "$cache_status"
+  meta_time "restore-cache-time" "$restore_cache_start_time"
+}
+
+meta_set "build-step" "restore-cache"
+restore_cache | output "$LOG_FILE"
+
+build_dependencies() {
+  local cache_status start
+
+  cache_status="$(get_cache_status "$CACHE_DIR")"
+  start=$(nowms)
+  if [[ "$YARN_2" == "true" ]]; then
+    yarn_2_install "$BUILD_DIR"
+  elif $YARN; then
+    yarn_node_modules "$BUILD_DIR"
+  elif $PREBUILD; then
+    echo "Prebuild detected (node_modules already exists)"
+    npm_rebuild "$BUILD_DIR"
+  else
+    npm_node_modules "$BUILD_DIR"
+  fi
+
+  mtime "modules.time.cache.$cache_status" "${start}"
+
+  meta_set "build-step" "build-script"
+  header "Build"
+  run_build_script "$BUILD_DIR"
+}
+
+meta_set "build-step" "install-dependencies"
+log_build_scripts "$BUILD_DIR"
+run_prebuild_script "$BUILD_DIR" | output "$LOG_FILE"
+header "Installing dependencies" | output "$LOG_FILE"
+build_dependencies | output "$LOG_FILE"
+
+cache_build() {
+  local cache_directories cache_build_start_time
+  cache_build_start_time=$(nowms)
+  cache_directories="$(get_cache_directories "$BUILD_DIR")"
+
+  clear_cache "$CACHE_DIR"
+  if ! ${NODE_MODULES_CACHE:-true}; then
+    # we've already warned that caching is disabled in the restore step
+    # so be silent here
+    :
+  elif [[ "$cache_directories" == "" ]]; then
+    header "Caching build"
+    save_default_cache_directories "$BUILD_DIR" "$CACHE_DIR" "$YARN_CACHE_FOLDER" "$NPM_CONFIG_CACHE"
+  else
+    header "Caching build"
+    save_custom_cache_directories "$BUILD_DIR" "$CACHE_DIR" "$cache_directories"
+  fi
+  save_signature "$CACHE_DIR"
+  meta_time "save-cache-time" "$cache_build_start_time"
+}
+
+prune_devdependencies() {
+  if $YARN || $YARN_2; then
+    yarn_prune_devdependencies "$BUILD_DIR" "$YARN_CACHE_FOLDER" "$BP_DIR"
+  else
+    npm_prune_devdependencies "$BUILD_DIR"
+  fi
+}
+
+if $YARN_2; then
+  meta_set "build-step" "save-cache"
+  cache_build | output "$LOG_FILE"
+  meta_set "build-step" "prune-dependencies"
+  header "Pruning devDependencies" | output "$LOG_FILE"
+  prune_devdependencies | output "$LOG_FILE"
+elif "$YARN" && "$USE_YARN_CACHE" && [[ "$(get_cache_directories "$BUILD_DIR")" == "" ]]; then
+  meta_set "build-step" "prune-dependencies"
+  header "Pruning devDependencies" | output "$LOG_FILE"
+  prune_devdependencies | output "$LOG_FILE"
+  meta_set "build-step" "save-cache"
+  cache_build | output "$LOG_FILE"
+else
+  meta_set "build-step" "save-cache"
+  cache_build | output "$LOG_FILE"
+  meta_set "build-step" "prune-dependencies"
+  header "Pruning devDependencies" | output "$LOG_FILE"
+  prune_devdependencies | output "$LOG_FILE"
+fi
+
+meta_set "build-step" "cleanup-script"
+run_cleanup_script "$BUILD_DIR" | output "$LOG_FILE"
+
+summarize_build() {
+  if $NODE_VERBOSE; then
+    list_dependencies "$BUILD_DIR"
+  fi
+
+  mmeasure 'modules.size' "$(measure_size)"
+  meta_set "node-modules-size" "$(measure_size)"
+}
+
+meta_set "build-step" "install-metrics-plugin"
+install_plugin "$BP_DIR" "$BUILD_DIR"
+
+meta_set "build-step" "summarize"
+header "Build succeeded!" | output "$LOG_FILE"
+mcount "compile"
+summarize_build | output "$LOG_FILE"
+meta_set "node-build-success" "true"
+meta_time "build-time" "$build_start_time"
+
+warn_no_start "$BUILD_DIR"
+warn_unmet_dep "$LOG_FILE"
+warn_old_npm_lockfile $NPM_LOCK
+
+meta_set "build-step" "finished"
+log_meta_data >> "$BUILDPACK_LOG_FILE"
+
+
+
+
+
+
+# The Heroku Python Buildpack. This script accepts parameters for a build
+# directory, a cache directory, and a directory for app environment variables.
+
+# Warning: there are a few hacks in this script to accommodate excellent builds
+# on Heroku. No guarantee for external compatibility is made. However,
+# everything should work fine outside of the Heroku environment, if the
+# environment is setup correctly.
+
+# Usage:
+#
+#     $ bin/compile <build-dir> <cache-dir> <env-path>
+
+# Fail fast and fail hard.
+set -eo pipefail
+
+# Used by buildpack-stdlib's metrics features.
+export BPLOG_PREFIX="buildpack.python"
+export BUILDPACK_LOG_FILE=${BUILDPACK_LOG_FILE:-/dev/null}
+
+[ "$BUILDPACK_XTRACE" ] && set -o xtrace
+
+# Prepend proper path for old-school virtualenv hackery.
+# This may not be neccessary.
+export PATH=:/usr/local/bin:$PATH
+
+# Setup Path variables, for later use in the Buildpack.
+BIN_DIR=$(cd "$(dirname "$0")"; pwd) # absolute path
+ROOT_DIR=$(dirname "$BIN_DIR")
+BUILD_DIR="$1/server"
+CACHE_DIR=$2
+ENV_DIR=$3
+
+# Export Path variables, for use in sub-scripts.
+export BUILD_DIR CACHE_DIR ENV_DIR
+
+# Set the base URL for downloading buildpack assets like Python runtimes.
+# The user can provide BUILDPACK_S3_BASE_URL to specify a custom target.
+# Note: this is designed for non-Heroku use, as it does not use the user-provided
+# environment variable mechanism (the ENV_DIR).
+S3_BASE_URL="${BUILDPACK_S3_BASE_URL:-"https://heroku-buildpack-python.s3.us-east-1.amazonaws.com"}"
+# This has to be exported since it's used by the geo-libs step which is run in a subshell.
+
+# Default Python Versions
+# shellcheck source=bin/default_pythons
+source "$BIN_DIR/default_pythons"
+
+# Common Problem Warnings:
+# This section creates a temporary file in which to stick the output of `pip install`.
+# The `warnings` subscript then greps through this for common problems and guides
+# the user towards resolution of known issues.
+WARNINGS_LOG=$(mktemp)
+
+# The buildpack ships with a few executable tools.
+# This installs them into the path, so we can execute them directly.
+export PATH=$PATH:$ROOT_DIR/vendor/
+
+# Sanitize externally-provided environment variables:
+# The following environment variables are either problematic or simply unneccessary
+# for the buildpack to have knowledge of, so we unset them, to keep the environment
+# as clean and pristine as possible.
+unset PYTHONHOME PYTHONPATH
+
+# Import the utils script, which contains helper functions used throughout the buildpack.
+# shellcheck source=bin/utils
+source "$BIN_DIR/utils"
+
+# Import the warnings script, which contains the `pip install` user warning mechanisms
+# (mentioned and explained above)
+# shellcheck source=bin/warnings
+source "$BIN_DIR/warnings"
+
+# Make the directory in which we will create symlinks from the temporary build directory
+# to `/app`.
+# Symlinks are required, since Python is not a portable installation.
+# More on this topic later.
+mkdir -p /app/.heroku
+
+# This buildpack programatically generates (or simply copies) a number of files for
+# buildpack machinery: an export script, and a number of `.profile.d` scripts. This
+# section declares the locations of those files and targets.
+PROFILE_PATH="$BUILD_DIR/.profile.d/python.sh"
+EXPORT_PATH="$BIN_DIR/../export"
+GUNICORN_PROFILE_PATH="$BUILD_DIR/.profile.d/python.gunicorn.sh"
+WEB_CONCURRENCY_PROFILE_PATH="$BUILD_DIR/.profile.d/WEB_CONCURRENCY.sh"
+
+# We'll need to send these statics to other scripts we `source`.
+export BUILD_DIR CACHE_DIR BIN_DIR PROFILE_PATH EXPORT_PATH
+
+# Python Environment Variables
+# Set Python-specific environment variables, for running Python within the buildpack.
+# Notes on each variable included.
+
+# PATH is relatively obvious, we need to be able to execute 'python'.
+export PATH=/app/.heroku/python/bin:/app/.heroku/vendor/bin:$PATH
+# Tell Python to not buffer it's stdin/stdout.
+export PYTHONUNBUFFERED=1
+# Set the locale to a well-known and expected standard.
+export LANG=en_US.UTF-8
+# `~/.heroku/vendor` is an place where the buildpack may stick pre-build binaries for known
+# C dependencies. This section configures Python (GCC, more specifically)
+# and pip to automatically include these paths when building binaries.
+# TODO: Stop adding .heroku/vendor here now that the buildpack no longer vendors anything.
+export C_INCLUDE_PATH=/app/.heroku/vendor/include:/app/.heroku/python/include:$C_INCLUDE_PATH
+export CPLUS_INCLUDE_PATH=/app/.heroku/vendor/include:/app/.heroku/python/include:$CPLUS_INCLUDE_PATH
+export LIBRARY_PATH=/app/.heroku/vendor/lib:/app/.heroku/python/lib:$LIBRARY_PATH
+export LD_LIBRARY_PATH=/app/.heroku/vendor/lib:/app/.heroku/python/lib:$LD_LIBRARY_PATH
+export PKG_CONFIG_PATH=/app/.heroku/vendor/lib/pkg-config:/app/.heroku/python/lib/pkg-config:$PKG_CONFIG_PATH
+
+# Global pip options (https://pip.pypa.io/en/stable/user_guide/#environment-variables).
+# Disable pip's warnings about EOL Python since we show our own.
+export PIP_NO_PYTHON_VERSION_WARNING=1
+
+# The Application Code
+# --------------------
+
+# Switch to the repo's context.
+cd "$BUILD_DIR"
+
+# The Cache
+# ---------
+
+# The workflow for the Python Buildpack's cache is as follows:
+#
+# - `~/.heroku/{known-paths}` are copied from the cache into the slug.
+# - The build is executed, modifying `~/.heroku/{known-paths}`.
+# - Once the build is complete, `~/.heroku/{known-paths}` is copied back into the cache.
+
+# Create the cache directory, if it doesn't exist.
+mkdir -p "$CACHE_DIR/.heroku"
+
+# Restore old artifacts from the cache.
+mkdir -p .heroku
+
+# The Python installation.
+cp -R "$CACHE_DIR/.heroku/python" .heroku/ &> /dev/null || true
+# A plain text file which contains the current stack being used (used for cache busting).
+cp -R "$CACHE_DIR/.heroku/python-stack" .heroku/ &> /dev/null || true
+# A plain text file which contains the current python version being used (used for cache busting).
+cp -R "$CACHE_DIR/.heroku/python-version" .heroku/ &> /dev/null || true
+# A plain text file which contains the current sqlite3 version being used (used for cache busting).
+cp -R "$CACHE_DIR/.heroku/python-sqlite3-version" .heroku/ &> /dev/null || true
+# "editable" installations of code repositories, via pip or pipenv.
+if [[ -d "$CACHE_DIR/.heroku/src" ]]; then
+  cp -R "$CACHE_DIR/.heroku/src" .heroku/ &> /dev/null || true
+fi
+
+# The pre_compile hook. Customers rely on this. Don't remove it.
+# This part of the code is used to allow users to customize their build experience
+# without forking the buildpack by providing a `bin/pre_compile` script, which gets
+# run inline with the buildpack automatically.
+
+# shellcheck source=bin/steps/hooks/pre_compile
+source "$BIN_DIR/steps/hooks/pre_compile"
+
+# Sticky runtimes. If there was a previous build, and it used a given version of Python,
+# continue to use that version of Python in perpituity (warnings will be raised if
+# they are out–of–date).
+if [ -f "$CACHE_DIR/.heroku/python-version" ]; then
+  CACHED_PYTHON_VERSION=$(cat "$CACHE_DIR/.heroku/python-version")
+fi
+
+# We didn't always record the stack version. This code is in place because of that.
+if [ -f "$CACHE_DIR/.heroku/python-stack" ]; then
+  CACHED_PYTHON_STACK=$(cat "$CACHE_DIR/.heroku/python-stack")
+else
+  CACHED_PYTHON_STACK=$STACK
+fi
+
+# Pipenv Python version support.
+# Detect the version of Python requested from a Pipfile (e.g. python_version or python_full_version).
+# Convert it to a runtime.txt file.
+
+# shellcheck source=bin/steps/pipenv-python-version
+source "$BIN_DIR/steps/pipenv-python-version"
+
+if [[ -f runtime.txt ]]; then
+  # PYTHON_VERSION_SOURCE may have already been set by the pipenv-python-version step.
+  # TODO: Refactor this and stop pipenv-python-version using runtime.txt as an API.
+  PYTHON_VERSION_SOURCE=${PYTHON_VERSION_SOURCE:-"runtime.txt"}
+  puts-step "Using Python version specified in ${PYTHON_VERSION_SOURCE}"
+  mcount "version.reason.python.specified"
+elif [[ -n "${CACHED_PYTHON_VERSION:-}" ]]; then
+  puts-step "No Python version was specified. Using the same version as the last build: ${CACHED_PYTHON_VERSION}"
+  echo "       To use a different version, see: https://devcenter.heroku.com/articles/python-runtimes"
+  mcount "version.reason.python.cached"
+  echo "${CACHED_PYTHON_VERSION}" > runtime.txt
+else
+  puts-step "No Python version was specified. Using the buildpack default: ${DEFAULT_PYTHON_VERSION}"
+  echo "       To use a different version, see: https://devcenter.heroku.com/articles/python-runtimes"
+  mcount "version.reason.python.default"
+  echo "${DEFAULT_PYTHON_VERSION}" > runtime.txt
+fi
+
+# Create the directory for .profile.d, if it doesn't exist.
+mkdir -p "$(dirname "$PROFILE_PATH")"
+# Create the directory for editable source code installation, if it doesn't exist.
+mkdir -p /app/.heroku/src
+
+# On Heroku CI, builds happen in `/app`. Otherwise, on the Heroku platform,
+# they occur in a temp directory. Beacuse Python is not portable, we must create
+# symlinks to emulate that we are operating in `/app` during the build process.
+# This is (hopefully obviously) because apps end up running from `/app` in production.
+# Realpath is used to support use-cases where one of the locations is a symlink to the other.
+if [[ "$(realpath "${BUILD_DIR}")" != "$(realpath /app)" ]]; then
+    # python expects to reside in /app, so set up symlinks
+    # we will not remove these later so subsequent buildpacks can still invoke it
+    ln -nsf "$BUILD_DIR/.heroku/python" /app/.heroku/python
+    ln -nsf "$BUILD_DIR/.heroku/vendor" /app/.heroku/vendor
+    # Note: .heroku/src is copied in later.
+fi
+
+# Download / Install Python, from pre-build binaries available on Amazon S3.
+# This step also bootstraps pip / setuptools.
+(( start=$(nowms) ))
+# shellcheck source=bin/steps/python
+source "$BIN_DIR/steps/python"
+mtime "python.install.time" "${start}"
+
+# Install Pipenv dependencies, if a Pipfile was provided.
+# shellcheck source=bin/steps/pipenv
+source "$BIN_DIR/steps/pipenv"
+
+# If no requirements.txt file given, assume `setup.py develop` is intended.
+# This allows for people to ship a setup.py application to Heroku
+
+if [ ! -f requirements.txt ] && [ ! -f Pipfile ]; then
+  echo "-e ." > requirements.txt
+fi
+
+# SQLite3 support.
+# This sets up and installs sqlite3 dev headers and the sqlite3 binary but not the
+# libsqlite3-0 library since that exists on the stack image.
+(( start=$(nowms) ))
+# shellcheck source=bin/steps/sqlite3
+source "$BIN_DIR/steps/sqlite3"
+buildpack_sqlite3_install
+mtime "sqlite3.install.time" "${start}"
+
+# pip install
+# -----------
+
+# Install dependencies with pip (where the magic happens).
+(( start=$(nowms) ))
+# shellcheck source=bin/steps/pip-install
+source "$BIN_DIR/steps/pip-install"
+mtime "pip.install.time" "${start}"
+
+# Support for NLTK corpora.
+(( start=$(nowms) ))
+sub_env "$BIN_DIR/steps/nltk"
+mtime "nltk.download.time" "${start}"
+
+# Support for editable installations. Here, we are copying pip–created src directory,
+# and copying it into the proper place (the logical place to do this was early, but it must be done here).
+# In CI, $BUILD_DIR is /app.
+# Realpath is used to support use-cases where one of the locations is a symlink to the other.
+if [[ "$(realpath "${BUILD_DIR}")" != "$(realpath /app)" ]]; then
+  rm -rf "$BUILD_DIR/.heroku/src"
+  deep-cp /app/.heroku/src "$BUILD_DIR/.heroku/src"
+fi
+
+
+# Django collectstatic support.
+# The buildpack automatically runs collectstatic for Django applications.
+# This is the cause for the majority of build failures on the Python platform.
+# These failures are intentional — if collectstatic (which can be tricky, at times) fails,
+# your build fails.
+(( start=$(nowms) ))
+sub_env "$BIN_DIR/steps/collectstatic"
+mtime "collectstatic.time" "${start}"
+
+
+# Progamatically create .profile.d script for application runtime environment variables.
+
+# Set the PATH to include Python / pip / pipenv / etc.
+set_env PATH "\$HOME/.heroku/python/bin:\$PATH"
+# Tell Python to run in unbuffered mode.
+set_env PYTHONUNBUFFERED true
+# Tell Python where it lives.
+set_env PYTHONHOME "\$HOME/.heroku/python"
+# Set variables for C libraries.
+set_env LIBRARY_PATH "\$HOME/.heroku/vendor/lib:\$HOME/.heroku/python/lib:\$LIBRARY_PATH"
+set_env LD_LIBRARY_PATH "\$HOME/.heroku/vendor/lib:\$HOME/.heroku/python/lib:\$LD_LIBRARY_PATH"
+# Locale.
+set_default_env LANG en_US.UTF-8
+# The Python hash seed is set to random.
+set_default_env PYTHONHASHSEED random
+# Tell Python to look for Python modules in the /app dir. Don't change this.
+set_default_env PYTHONPATH "\$HOME"
+
+# Python expects to be in /app, if at runtime, it is not, set
+# up symlinks… this can occur when the subdir buildpack is used.
+cat <<EOT >> "$PROFILE_PATH"
+if [[ \$HOME != "/app" ]]; then
+    mkdir -p /app/.heroku
+    ln -nsf "\$HOME/.heroku/python" /app/.heroku/python
+    ln -nsf "\$HOME/.heroku/vendor" /app/.heroku/vendor
+fi
+EOT
+
+# At runtime, rewrite paths in editable package .egg-link, .pth and finder files from the build time paths
+# (such as `/tmp/build_<hash>`) back to `/app`. This is not done during the build itself, since later
+# buildpacks still need the build time paths.
+if [[ "${BUILD_DIR}" != "/app" ]]; then
+  cat <<EOT >> "$PROFILE_PATH"
+find .heroku/python/lib/python*/site-packages/ -type f -and \( -name '*.egg-link' -or -name '*.pth' -or -name '__editable___*_finder.py' \) -exec sed -i -e 's#${BUILD_DIR}#/app#' {} \+
+EOT
+fi
+
+# Install sane-default script for $WEB_CONCURRENCY and $FORWARDED_ALLOW_IPS.
+cp "$ROOT_DIR/vendor/WEB_CONCURRENCY.sh" "$WEB_CONCURRENCY_PROFILE_PATH"
+cp "$ROOT_DIR/vendor/python.gunicorn.sh" "$GUNICORN_PROFILE_PATH"
+
+# Experimental post_compile hook. Don't remove this.
+# shellcheck source=bin/steps/hooks/post_compile
+source "$BIN_DIR/steps/hooks/post_compile"
+
+# Store new artifacts in the cache.
+rm -rf "$CACHE_DIR/.heroku/python"
+rm -rf "$CACHE_DIR/.heroku/python-version"
+rm -rf "$CACHE_DIR/.heroku/python-stack"
+rm -rf "$CACHE_DIR/.heroku/vendor"
+rm -rf "$CACHE_DIR/.heroku/src"
+
+mkdir -p "$CACHE_DIR/.heroku"
+cp -R .heroku/python "$CACHE_DIR/.heroku/"
+cp -R .heroku/python-version "$CACHE_DIR/.heroku/"
+cp -R .heroku/python-stack "$CACHE_DIR/.heroku/" &> /dev/null || true
+if [[ -d .heroku/src ]]; then
+  cp -R .heroku/src "$CACHE_DIR/.heroku/" &> /dev/null || true
+fi
+
+# Measure the size of the Python installation.
+# shellcheck disable=SC2119
+mmeasure 'python.size' "$(measure-size)"
