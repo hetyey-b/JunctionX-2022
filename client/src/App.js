@@ -1,19 +1,15 @@
-import EuropeMap from './graphics/map.svg';
+import Map from './components/Map';
 
 function App() {
   return (
     <div 
-      className=' h-full w-full flex justify-between 
+      className=' w-full flex justify-between 
                   bg-bgGray text-wiseNavyBlue 
-                  px-[10%] pt-5'
+                  px-[2vw] pt-5'
     >
       <div>
-        SideMenu
+        <Map/>
       </div>
-      <img 
-        src={EuropeMap}
-        className='max-h-screen'
-      />
     </div>
   );
 }
