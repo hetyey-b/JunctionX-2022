@@ -58,10 +58,15 @@ const Map = ({lines, dots, onClick}) => {
                                             geography={geo}
                                             fill='#37517e'
                                             stroke='#f2f5f7'
+                                            // className='cursor-pointer'
                                             strokeWidth={0.2}
                                             style={{
                                                 default: {outline: "none"},
-                                                hover: {outline: "none"},
+                                                hover: { 
+                                                    outline: "none",
+                                                    fill: '#2e4369',
+                                                    strokeWidth: 0.3,
+                                                },
                                                 pressed: {outline: "none"},
                                             }}    
                                         />
@@ -79,7 +84,7 @@ const Map = ({lines, dots, onClick}) => {
                                 to={[line.to.lon, line.to.lat]}
                                 stroke={line.color}
                                 fill={line.color}
-                                strokeWidth={1}
+                                strokeWidth={0.1}
                                 strokeLinecap='round'
                                 key={`line-${line.from.lon},${line.from.lat}-${line.to.lon},${line.to.lat}`}
                             />
