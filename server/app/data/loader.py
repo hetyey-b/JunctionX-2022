@@ -1,5 +1,4 @@
 import csv
-import time
 
 import requests
 
@@ -7,7 +6,6 @@ from server.app.database import (
     create_city,
     get_cities,
     create_city_extra,
-    has_extra_data,
 )
 from server.app.shemas import Cost, Currency
 
@@ -15,14 +13,17 @@ CITIES = "cities.csv"
 
 
 def load_cities():
+    names = []
     with open(CITIES, "r", encoding="utf-8") as f:
         headers = None
         for line in csv.reader(f.readlines()):
             if headers is None:
                 headers = line
                 continue
-            create_city(line[1], line[2], float(line[3]), float(line[4]))
+            names.append(line[1])
+            create_city(line[1].split("-")[0], line[2], float(line[3]), float(line[4]))
     print(f"{len(get_cities())} cities loaded!")
+    return names
 
 
 rorm = True
@@ -121,13 +122,14 @@ def get_extra_city_data(city: str, curr: str):
     name = data["city"]
     currency = data["currency"]
     costs = create_costs(data)
-    create_city_extra(name=name, currency=Currency(currency), costs=costs)
+    if not costs:
+        print(city)
+    create_city_extra(name=name.split("-")[0], currency=Currency(currency), costs=costs)
 
 
 if __name__ == "__main__":
-    load_cities()
-    cities = get_cities()
-    for city_name in cities:
+    names = load_cities()
+    for city_name in names:
         currencies = [curr.value for curr in Currency]
         for curr in currencies:
             get_extra_city_data(city_name, curr)
