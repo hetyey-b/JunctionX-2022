@@ -18,7 +18,7 @@ const MyTrips = ({setSelectedTrip,visible,onClose}) => {
     } 
 
     return(
-        <div className={`w-[33vw] max-h-[40vh] overflow-y-scroll top-1/3 left-1/2 form p-1 ${visible ? 'scale-100' : 'scale-0'}`}>
+        <div className={`w-[33vw] max-h-[40vh] min-h-[100px] overflow-y-scroll top-1/3 left-1/2 form p-1 ${visible ? 'scale-100' : 'scale-0'}`}>
             <ul>
                 {
                     trips.map((trip,ind) => 
@@ -31,8 +31,7 @@ const MyTrips = ({setSelectedTrip,visible,onClose}) => {
                             onClick={() => handleTripOnClick(trip)}
                         >
                             <div>
-                                <span className='font-bold text-lg'>{trip.targetCity || '???'}</span>
-                                 - {trip.days} nights - {<BsPeopleFill className='inline mx-1'/>}{trip.numberOfTravellers}
+                                {trip.days} nights - {<BsPeopleFill className='inline mx-1'/>}{trip.numberOfTravellers}
                                  - {<MdRestaurant className='inline mx-1'/>}{trip.outings}
                                 <i className='itallic normal-case ml-5'>leaving from: <span className='capitalize'>{trip.startingCity}</span></i>
                             </div>
