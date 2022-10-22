@@ -10,13 +10,18 @@
         @apply my-2 uppercase font-bold;
     }
     .formNumber {
-        @apply bg-brandBlue border border-bgGray rounded-lg inline-block p-2.5 uppercase;
+        @apply bg-bgGray border border-buttonBlue rounded-lg inline-block p-2.5 uppercase;
     }
     .formSelect {
-        @apply bg-brandBlue border border-bgGray rounded-lg block w-full p-2.5 uppercase;
+        @apply bg-bgGray border border-buttonBlue rounded-lg block w-full p-2.5 uppercase;
     }
     .formButton {
-        @apply border border-bgGray py-1 px-2 rounded hover:bg-brandBlueHover;
+        @apply border border-buttonBlue text-buttonBlue bg-bgGray py-1 px-2 rounded 
+                hover:bg-buttonBlue hover:text-bgGray transition-colors duration-200
+                font-bold border-2;
+    }
+    .form {
+        @apply absolute bg-bgGray text-wiseNavyBlue animatingUI p-10 rounded-xl shadow-2xl 
     }
 }
 
@@ -24,7 +29,7 @@
 .rsm-svg {
     width: 99vw;
     height: 99vh;
-    background-color: #253655;
+    background-color: #ffffff;
 }
 
 /* Scrollbar Styling */
@@ -32,14 +37,14 @@
     width: 7px;
 }
 ::-webkit-scrollbar-track {
-    background: #37517e;
+    background: #f2f5f7;
 }
 ::-webkit-scrollbar-thumb {
-    background: #00b9ff;
+    background:#37517e;
     border-radius: 10px;
     margin: 1px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #00a4df;
+    background:  #37517e;
     border-radius: 10px;
 }

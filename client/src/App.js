@@ -79,22 +79,10 @@ function App() {
         const colors = recommendationFilter(response.data.recommendations, selectedTrip.onlyCityCenter);
 
         setDots(colors.colors.map((recommendation,ind) => {
-          let color = '#de3c4b';
-
-          if (recommendation.color === 'blue') {
-            color = '#00b9ff';
-          }
-          if (recommendation.color === 'yellow') {
-            color = '#ffb619';
-          }
-          if (recommendation.color === 'green') {
-            color = '#46c944';
-          }
-
           return {
             lon: recommendation.city.long,
             lat: recommendation.city.lat,
-            color,
+            color: recommendation.color,
             ind,
           };
         }));
@@ -117,7 +105,7 @@ function App() {
           lon: recommendations.colors[ind].city.long,
           lat: recommendations.colors[ind].city.lat,
         },
-        color: '#46c944',
+        color: recommendations.colors[ind].color,
       },
     ]);
     setSelectedDot({
@@ -147,7 +135,7 @@ function App() {
 
   return (
     <div 
-      className=' w-full flex justify-between px-2 py-1 bg-brandBlue'
+      className=' w-full flex justify-between px-2 py-1 bg-white'
     >
       <div>
         <MyLocation cities={cities} currencies={['HUF', 'EUR']} onClose={closeOpenPopUp} visible={openPopUp === 'MyLocation'}/>

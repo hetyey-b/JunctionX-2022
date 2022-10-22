@@ -76,8 +76,7 @@ const NewTrip = ({cities, visible, onClose}) => {
     }
 
     return(
-        <div className={`absolute bg-brandBlue top-1/3 left-1/2 px-10 pt-3 pb-5 rounded-xl shadow-2xl
-                        text-bgGray ${visible ? 'scale-100' : 'scale-0'} animatingUI`}>
+        <div className={`top-1/4 left-1/2 form ${visible ? 'scale-100' : 'scale-0'} `}>
             <form onSubmit={handleOnSubmit}>
                 <label
                     className='formLabel block'
@@ -187,7 +186,7 @@ const NewTrip = ({cities, visible, onClose}) => {
                     <div
                         className='flex'
                     >
-                        <span className='inline-flex items-center rounded-l-lg border-l border-y bg-brandBlueHover px-3'>
+                        <span className='inline-flex items-center rounded-l-lg border-l border-y bg-wiseNavyBlue text-bgGray px-3'>
                             {currency}
                         </span>
                         <input

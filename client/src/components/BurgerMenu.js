@@ -7,21 +7,21 @@ const BurgerMenu = ({content, open, setOpen}) => {
     }
 
     return(
-        <div className='absolute'>
+        <div className={`absolute ${open ? 'shadow-xl' : ''}`}>
             {
                 open ?
                     <ImCross 
-                        className='text-bgGray w-[20px] h-[20px] m-3 cursor-pointer'
+                        className='text-wiseNavyBlue w-[20px] h-[20px] m-3 cursor-pointer hover:text-wiseNavyHighlight'
                         onClick={handleOnClick}
                     />
                     :
                     <ImMenu 
-                        className='text-bgGray w-[25px] h-[25px] m-2 cursor-pointer'
+                        className='text-wiseNavyBlue w-[25px] h-[25px] m-2 cursor-pointer hover:text-wiseNavyHighlight'
                         onClick={handleOnClick}
                     />
             }
             <div
-                className={`bg-brandBlue text-bgGray w-[30vw] py-2 px-4 h-[93vh] shadow-inner shadow-lg rounded
+                className={`bg-bgGray text-wiseNavyBlue w-[30vw] py-2 px-4 h-[93vh] shadow-inner shadow-lg rounded
                             ${open ? 'translate-x-0 visible opacity-100' : 'translate-x-[-100%] invisible opacity-0'}
                             animatingUI`}
             >
@@ -29,8 +29,8 @@ const BurgerMenu = ({content, open, setOpen}) => {
                     {content.map((menuOption, ind) => 
                         <li
                             onClick={menuOption.onClick}
-                            className={`w-full cursor-pointer hover:bg-brandBlueHover flex justify-between
-                                        px-2 py-4 border-b-2 ${ind === 0 && 'border-t-2 mt-2'} border-bgGray font-bold`}
+                            className={`w-full cursor-pointer hover:text-wiseNavyHighlight flex justify-between
+                                        px-2 py-4 border-bgGray font-bold`}
                             key={`burgerMenu-li-${ind}-${menuOption.text}`}
                         >
                             <div className='inline-block'>

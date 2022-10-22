@@ -21,7 +21,7 @@ const Map = ({lines, dots, onClick, onDotSelect}) => {
     }
 
     return(
-        <div className='border border-solid border-sky-500' onClick={onClick}>
+        <div className='border' onClick={onClick}>
             <button 
                 onClick={handleOnResetClick}
                 className='absolute bg-brandBlue hover:bg-brandBlueHover p-2 text-bgGray rounded bottom-3 right-4'
@@ -58,14 +58,13 @@ const Map = ({lines, dots, onClick, onDotSelect}) => {
                                             geography={geo}
                                             fill='#37517e'
                                             stroke='#f2f5f7'
-                                            // className='cursor-pointer'
                                             strokeWidth={0.2}
                                             style={{
                                                 default: {outline: "none"},
                                                 hover: { 
                                                     outline: "none",
-                                                    fill: '#2e4369',
-                                                    strokeWidth: 0.3,
+                                                    fill: '#18A0CC',
+                                                    strokeWidth: 0.4,
                                                 },
                                                 pressed: {outline: "none"},
                                             }}    
