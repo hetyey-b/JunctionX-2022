@@ -13,22 +13,23 @@ const BurgerMenu = ({content}) => {
         <div className='absolute'>
             {
                 open ?
-                (
-                    <div>
-                        <ImCross 
-                            className='text-brandBlue w-[40px] h-[40px] m-3 hover:text-brandBlueHover cursor-pointer'
-                            onClick={handleOnClick}
-                        />
-                    </div>    
-                )
+                <ImCross 
+                    className='text-bgGray w-[20px] h-[20px] m-3 cursor-pointer'
+                    onClick={handleOnClick}
+                />
                 :
-                (
-                    <ImMenu 
-                        className='text-brandBlue w-[50px] h-[50px] m-2 hover:text-brandBlueHover cursor-pointer'
-                        onClick={handleOnClick}
-                    />
-                )
+                <ImMenu 
+                    className='text-bgGray w-[25px] h-[25px] m-2 cursor-pointer'
+                    onClick={handleOnClick}
+                />
             }
+            <div
+                className={`bg-brandBlue text-bgGray w-[30vw] py-2 px-4 mx-1 
+                            ${open ? 'translate-x-0 visible opacity-100' : 'translate-x-[-100%] invisible opacity-0'}
+                            ease-in-out duration-300`}
+            >
+                {content}
+            </div>
         </div>
     )
 };

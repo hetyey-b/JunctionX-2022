@@ -33,12 +33,13 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 function App() {
   return (
     <div 
-      className=' w-full flex justify-between 
-                  bg-bgGray text-wiseNavyBlue 
-                  px-[2vw] pt-5'
+      className=' w-full flex justify-between px-2 py-1 bg-brandBlue'
     >
       <div>
-        <BurgerMenu />
+        <BurgerMenu 
+          content={[
+          ]}
+        />
         <Map
          lines={lines}
          dots={dots} 
