@@ -18,19 +18,6 @@ def get_wise_user_profile(token: str):
     return resp.json()[0]
 
 
-def get_balance(token: str, user_profile=None):
-    user_profile = (
-        get_wise_user_profile(token) if user_profile is None else user_profile
-    )
-    resp = requests.get(
-        base_url + f"/v4/profiles/{user_profile['id']}/balances?types=STANDARD",
-        headers=get_bearer(token),
-    )
-    if resp.status_code != 200:
-        raise Exception("Bad", resp.status_code, resp.json())
-    return resp.json()[0]
-
-
 def get_savings(token: str, balance_id: int | None):
     user_profile = get_wise_user_profile(token)
     resp = requests.get(
