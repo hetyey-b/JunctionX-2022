@@ -1,5 +1,6 @@
 import React from 'react';
 
+import {MdRestaurant} from 'react-icons/md';
 import {BsPeopleFill} from 'react-icons/bs';
 
 const MyTrips = ({setSelectedTrip,visible,onClose}) => {
@@ -28,11 +29,12 @@ const MyTrips = ({setSelectedTrip,visible,onClose}) => {
                                         ${ind===0 ? 'rounded-t-lg' : ''} ${ind===trips.length - 1 ? 'rounded-b-lg' : ''}
                                         uppercase w-full h-[50px] font-lg inline-flex items-center text-center 
                                         px-4 border-b border-x ${ind===0?'border-t':''}`}
-                            onClick={handleTripOnClick(trip)}
+                            onClick={() => handleTripOnClick(trip)}
                         >
                             <div>
                                 <span className='font-bold text-lg'>{trip.targetCity || '???'}</span>
-                                - {trip.days} nights - {<BsPeopleFill className='inline mx-1'/>}{trip.numberOfTravellers}
+                                 - {trip.days} nights - {<BsPeopleFill className='inline mx-1'/>}{trip.numberOfTravellers}
+                                 - {<MdRestaurant className='inline mx-1'/>}{trip.outings}
                                 <i className='itallic normal-case ml-5'>leaving from: <span className='capitalize'>{trip.startingCity}</span></i>
                             </div>
                         </li>

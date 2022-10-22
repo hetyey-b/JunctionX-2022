@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import Map from './components/Map';
+import recommendationFilter from './util/recommendationFilter';
 
 import BurgerMenu from './components/BurgerMenu';
 import MyLocation from './components/burgerMenuPopups/MyLocation';
@@ -37,23 +38,68 @@ function App() {
         setCities(response.data.cities);
       }
 
-      setDots(response.data.cities.map((city) => {
-        return {
-          lon: city.long,
-          lat: city.lat,
-          color: '#ffb619',
-        }
-      }))
+      // setDots(response.data.cities.map((city) => {
+      //   return {
+      //     lon: city.long,
+      //     lat: city.lat,
+      //     color: '#ffb619',
+      //   }
+      // }))
     }
 
     fetchCities();
   }, []);
 
-  // React.useEffect(() => {
-  //   const fetchTripResults = async () => {
-  //     const response = await 
-  //   }
-  // }, [selectedTrip]);
+  React.useEffect(() => {
+    if(!selectedTrip) {
+      return;
+    }
+
+    const fetchRecommendation = async () => {
+      const response = await axios.post(
+          `${BACKEND_URL}/recommendations?location=${selectedTrip.startingCity}&currency=${localStorage.getItem('currency').toUpperCase()}`,
+          {
+            budget: selectedTrip.budget,
+            people: selectedTrip.numberOfTravellers,
+            nights: selectedTrip.days,
+            accommodation: selectedTrip.accommodation,
+            outings: selectedTrip.outings,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          }
+      );
+
+      if (response.status === 200) {
+        const colors = recommendationFilter(response.data.recommendations, selectedTrip.onlyCityCenter);
+
+        setDots(colors.map((recommendation) => {
+          let color = '#de3c4b';
+
+          if (recommendation.color === 'blue') {
+            color = '#00b9ff';
+          }
+
+          if (recommendation.color === 'yellow') {
+            color = '#ffb619';
+          }
+          if (recommendation.color === 'green') {
+            color = '#46c944';
+          }
+
+          return {
+            lon: recommendation.city.long,
+            lat: recommendation.city.lat,
+            color, 
+          };
+        }));
+      }
+    }
+
+    fetchRecommendation();
+  }, [selectedTrip]);
 
   const handleMenuPopUpClick = (popUpName) => {
     if (openPopUp === popUpName) {
