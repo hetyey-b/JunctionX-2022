@@ -9,6 +9,11 @@ class Currency(Enum):
     HUF = "HUF"
 
 
+class AccommodationType(Enum):
+    HOTEL = "HOTEL"
+    AIRBNB = "AIRBNB"
+
+
 class Cost(BaseModel):
     name: str
     mean: float
@@ -29,13 +34,12 @@ class City(BaseModel):
     long: float
 
 
-class CityResponse(BaseModel):
-    city: City
-    extra: CityExtraData
-
-
 class CitiesResponse(BaseModel):
-    cities: list[CityResponse]
+    cities: list[City]
+
+
+class ExtraDataResponse(BaseModel):
+    extra: CityExtraData
 
 
 class Travel(BaseModel):
@@ -49,3 +53,17 @@ class TravelResponse(BaseModel):
     airplane: Travel
     car: Travel
     transit: Travel
+
+
+class BudgetRequest(BaseModel):
+    budget: float
+    people: int
+    nights: int
+    accommodation: AccommodationType
+    outings: int
+
+
+class Recommendation(BaseModel):
+    city: City
+    budget: BudgetRequest
+    cost: float
