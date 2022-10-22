@@ -20,6 +20,7 @@ module.exports = {
 
         wisePurple: '#485cc7', // accent color - bold statement / bring out element
         wiseAmber: '#ffb619', // accent color - bold statement / bring out element
+        wiseGreen: '#44EE70',
       }
     },
   },

@@ -11,6 +11,7 @@ import MyTrips from './components/burgerMenuPopups/MyTrips';
 import {FaMapMarkerAlt} from 'react-icons/fa';
 import {BiTrip} from 'react-icons/bi';
 import {BsFillPinMapFill} from 'react-icons/bs'
+import SelectedDot from './components/burgerMenuPopups/SelectedDot';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -21,6 +22,8 @@ function App() {
   const [dots, setDots] = React.useState([]);
   const [lines, setLines] = React.useState([]);
   const [selectedTrip, setSelectedTrip] = React.useState(null);
+  const [recommendations, setRecommendations] = React.useState([]);
+  const [selectedDot, setSelectedDot] = React.useState(null);
   
   React.useEffect(() => {
     if (localStorage.getItem('currency') === '') {
@@ -75,13 +78,12 @@ function App() {
       if (response.status === 200) {
         const colors = recommendationFilter(response.data.recommendations, selectedTrip.onlyCityCenter);
 
-        setDots(colors.map((recommendation) => {
+        setDots(colors.colors.map((recommendation,ind) => {
           let color = '#de3c4b';
 
           if (recommendation.color === 'blue') {
             color = '#00b9ff';
           }
-
           if (recommendation.color === 'yellow') {
             color = '#ffb619';
           }
@@ -92,16 +94,40 @@ function App() {
           return {
             lon: recommendation.city.long,
             lat: recommendation.city.lat,
-            color, 
+            color,
+            ind,
           };
         }));
+
+        setRecommendations(colors);
       }
     }
 
     fetchRecommendation();
   }, [selectedTrip]);
 
+  const handleDotSelect = (ind) => {
+    setLines([
+      {
+        from: {
+          lon: recommendations.originCity.city.long,
+          lat: recommendations.originCity.city.lat,
+        },
+        to: {
+          lon: recommendations.colors[ind].city.long,
+          lat: recommendations.colors[ind].city.lat,
+        },
+        color: '#46c944',
+      },
+    ]);
+    setSelectedDot({
+      target: recommendations.colors[ind],
+      origin: recommendations.originCity,
+    });
+  }
+
   const handleMenuPopUpClick = (popUpName) => {
+    closeSelectedDotDisplay();
     if (openPopUp === popUpName) {
       closeOpenPopUp();
       return;
@@ -113,6 +139,12 @@ function App() {
     setOpenPopUp(null);
   }
 
+  const closeSelectedDotDisplay = () => {
+    closeOpenPopUp();
+    setLines([]);
+    setSelectedDot(null);
+  }
+
   return (
     <div 
       className=' w-full flex justify-between px-2 py-1 bg-brandBlue'
@@ -121,6 +153,12 @@ function App() {
         <MyLocation cities={cities} currencies={['HUF', 'EUR']} onClose={closeOpenPopUp} visible={openPopUp === 'MyLocation'}/>
         <NewTrip cities={cities} onClose={closeOpenPopUp} visible={openPopUp === 'NewTrip'} />
         <MyTrips setSelectedTrip={setSelectedTrip} onClose={closeOpenPopUp} visible={openPopUp === 'MyTrips'} />
+        <SelectedDot 
+          onDotSelect={handleDotSelect}
+          onClose={() => closeSelectedDotDisplay()} 
+          visible={selectedDot !== null} 
+          data={selectedDot} 
+        />
         <BurgerMenu 
           open={burgerMenuOpen}
           setOpen={setBurgerMenuOpen}
@@ -145,6 +183,7 @@ function App() {
         <Map
          lines={lines}
          dots={dots}
+         onDotSelect={handleDotSelect}
          onClick={() => {setBurgerMenuOpen(false); closeOpenPopUp();}}
         />
       </div>

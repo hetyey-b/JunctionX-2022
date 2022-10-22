@@ -9,7 +9,7 @@ import {
 } from 'react-simple-maps';
 import {ImUndo} from 'react-icons/im';
 
-const Map = ({lines, dots, onClick}) => {
+const Map = ({lines, dots, onClick, onDotSelect}) => {
     const [position, setPosition] = React.useState({ coordinates: [10, 52], zoom: 5 });
 
     function handleOnResetClick() {
@@ -84,7 +84,7 @@ const Map = ({lines, dots, onClick}) => {
                                 to={[line.to.lon, line.to.lat]}
                                 stroke={line.color}
                                 fill={line.color}
-                                strokeWidth={0.1}
+                                strokeWidth={1}
                                 strokeLinecap='round'
                                 key={`line-${line.from.lon},${line.from.lat}-${line.to.lon},${line.to.lat}`}
                             />
@@ -95,6 +95,8 @@ const Map = ({lines, dots, onClick}) => {
                             <Marker 
                                 coordinates={[dot.lon, dot.lat]}
                                 key={`dot-${dot.lon},${dot.lat}`}
+                                className='cursor-pointer'
+                                onClick={() => onDotSelect(dot.ind)}
                             >
                                 <circle r={0.75} fill={dot.color} />
                             </Marker> 

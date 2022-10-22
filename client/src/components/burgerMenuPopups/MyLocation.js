@@ -9,7 +9,6 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
         if (e.target.value === '') {
             return;
         }
-
         setSelectedCurrency(e.target.value);
     }
 
@@ -17,7 +16,6 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
         if (e.target.value === '') {
             return;
         }
-
         setSelectedCity(e.target.value);
     }
     

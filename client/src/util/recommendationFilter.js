@@ -1,6 +1,9 @@
 export const recommendationFilter = (recommendations, onlyCityCenter) => {
+    let originCity = {};
+    
     const colors = recommendations.map((recommendation) => {
         if (!recommendation.data || Object.keys(recommendation.data).length === 0) {
+            originCity = {...recommendation};
             return {...recommendation, color: 'blue', greenSum: 0, yellowSum: 0};
         }
 
@@ -34,6 +37,6 @@ export const recommendationFilter = (recommendations, onlyCityCenter) => {
         }
     });
 
-    return colors;
+    return {colors: colors, originCity};
 }
 
