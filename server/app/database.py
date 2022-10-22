@@ -45,12 +45,12 @@ def to_curr(cost_in_eur: float, curr: Currency) -> float:
         return cost_in_eur * eur_to_huf
 
 
-def rent_to_acc(cost_in_eur: float, curr: Currency, acc: AccommodationType) -> float:
-    cost_in_curr_per_day = to_curr(cost_in_eur, curr) / 31
+def rent_to_acc_per_night(cost: float, acc: AccommodationType) -> float:
+    cost_per_day = cost / 31
     if acc == AccommodationType.HOTEL:
-        return cost_in_curr_per_day * 1.5
+        return cost_per_day * 1.5
     elif acc == AccommodationType.AIRBNB:
-        return cost_in_curr_per_day * 1.3
+        return cost_per_day * 1.3
     assert False
 
 
@@ -106,7 +106,6 @@ def get_extra_data(name: str, currency: str) -> CityExtraData:
         (extra_query.name == name) & (extra_query.currency == currency)
     )
     if len(extra) == 1:
-        print(extra[0])
         return CityExtraData.parse_obj(extra[0])
     raise HTTPException(HTTPStatus.BAD_REQUEST, f"{name} or {currency} is bad")
 
@@ -117,6 +116,18 @@ def get_cities_response() -> CitiesResponse:
 
 def get_extra_data_response(name: str, currency: Currency) -> ExtraDataResponse:
     return ExtraDataResponse(extra=get_extra_data(name, currency.value))
+
+
+def add_costs(name: str, outings: int, people: int, *costs: Cost):
+    c = Cost(name=name, mean=0, low=0, high=0)
+    for cost in costs:
+        c.mean += cost.mean
+        c.low += cost.low
+        c.high += cost.high
+    c.mean *= outings * people
+    c.low *= outings * people
+    c.high *= outings * people
+    return c
 
 
 def get_travel(city_from_name: str, city_to_name: str, currency: Currency):
@@ -158,55 +169,176 @@ def find(ls, key, value):
 
 
 def get_relevant_recommendation_data(
-    budget: BudgetRequest, curr: Currency, extra: CityExtraData
+    budget: BudgetRequest, localtion: str, curr: Currency, extra: CityExtraData
 ):
     data = {}
     if budget.people > 3:
-        cheap = find(
+        cheap_accommodation = find(
             extra.costs["Rent Per Month"],
             "name",
             "Apartment (3 bedrooms) Outside of Centre",
         )
-        expensive = find(
+        expensive_accommodation = find(
             extra.costs["Rent Per Month"],
             "name",
             "Apartment (3 bedrooms) in City Centre",
         )
+        expensive_accommodation.mean = expensive_accommodation.mean / 3 * budget.people
+        expensive_accommodation.low = expensive_accommodation.low / 3 * budget.people
+        expensive_accommodation.high = expensive_accommodation.high / 3 * budget.people
     else:
-        cheap = find(
+        cheap_accommodation = find(
             extra.costs["Rent Per Month"],
             "name",
             "Apartment (1 bedroom) Outside of Centre",
         )
-        expensive = find(
+        expensive_accommodation = find(
             extra.costs["Rent Per Month"],
             "name",
             "Apartment (1 bedroom) in City Centre",
         )
     data["accommodation"] = [
         {
-            "name": "Cheap accommodation",
-            "mean": rent_to_acc(cheap.mean, curr, budget.accommodation),
-            "low": rent_to_acc(cheap.low, curr, budget.accommodation),
-            "high": rent_to_acc(cheap.high, curr, budget.accommodation),
+            "name": "Accommodation Outside of Centre",
+            "mean": rent_to_acc_per_night(
+                cheap_accommodation.mean, budget.accommodation
+            )
+            * budget.nights,
+            "low": rent_to_acc_per_night(cheap_accommodation.low, budget.accommodation)
+            * budget.nights,
+            "high": rent_to_acc_per_night(
+                cheap_accommodation.high, budget.accommodation
+            )
+            * budget.nights,
         },
         {
-            "name": "Expensive accommodation",
-            "mean": rent_to_acc(expensive.mean, curr, budget.accommodation),
-            "low": rent_to_acc(expensive.low, curr, budget.accommodation),
-            "high": rent_to_acc(expensive.high, curr, budget.accommodation),
+            "name": "Accommodation in City Centre",
+            "mean": rent_to_acc_per_night(
+                expensive_accommodation.mean, budget.accommodation
+            )
+            * budget.nights,
+            "low": rent_to_acc_per_night(
+                expensive_accommodation.low, budget.accommodation
+            )
+            * budget.nights,
+            "high": rent_to_acc_per_night(
+                expensive_accommodation.high, budget.accommodation
+            )
+            * budget.nights,
         },
+    ]
+    travels = get_travel(localtion, extra.name, curr)
+    data["travel"] = [
+        {
+            "name": "Travel by airplane",
+            "mean": travels.airplane.cost,
+            "low": travels.airplane.cost * 0.77,
+            "high": travels.airplane.cost * 1.21,
+        },
+        {
+            "name": "Travel by Car",
+            "mean": travels.car.cost,
+            "low": travels.car.cost * 0.77,
+            "high": travels.car.cost * 1.21,
+        },
+        {
+            "name": "Travel by mass transit",
+            "mean": travels.transit.cost,
+            "low": travels.transit.cost * 0.77,
+            "high": travels.transit.cost * 1.21,
+        },
+    ]
+    if budget.outings < 1:
+        return data
+
+    fast_food = find(
+        extra.costs["Restaurants"],
+        "name",
+        "McMeal at McDonalds (or Equivalent Combo Meal)",
+    )
+    cheap_restaurant = find(
+        extra.costs["Restaurants"],
+        "name",
+        "Meal, Inexpensive Restaurant",
+    )
+    normal_restaurant = find(
+        extra.costs["Restaurants"],
+        "name",
+        "Meal for 2 People, Mid-range Restaurant, Three-course",
+    )
+    normal_restaurant.mean /= 2
+    normal_restaurant.low /= 2
+    normal_restaurant.high /= 2
+    cappuccino = find(
+        extra.costs["Restaurants"],
+        "name",
+        "Cappuccino (regular)",
+    )
+    domestic_bear_restaurant = find(
+        extra.costs["Restaurants"],
+        "name",
+        "Domestic Beer (0.5 liter draught)",
+    )
+    imported_bear_restaurant = find(
+        extra.costs["Restaurants"],
+        "name",
+        "Imported Beer (0.33 liter bottle)",
+    )
+    domestic_bear_market = find(
+        extra.costs["Markets"],
+        "name",
+        "Domestic Beer (0.5 liter bottle)",
+    )
+    chicken = find(
+        extra.costs["Markets"],
+        "name",
+        "Chicken Fillets (1kg)",
+    )
+    potato = find(
+        extra.costs["Markets"],
+        "name",
+        "Potato (1kg)",
+    )
+    data["outings"] = [
+        add_costs(
+            "Frugal",
+            budget.outings,
+            budget.people,
+            fast_food,
+            domestic_bear_market,
+            chicken,
+            potato,
+        ),
+        add_costs(
+            "Normal",
+            budget.outings,
+            budget.people,
+            cheap_restaurant,
+            domestic_bear_restaurant,
+            cappuccino,
+        ),
+        add_costs(
+            "Lavish",
+            budget.outings,
+            budget.people,
+            normal_restaurant,
+            cappuccino,
+            imported_bear_restaurant,
+        ),
     ]
 
     return data
 
 
-def get_recommendations(budget: BudgetRequest, currency: Currency):
+def get_recommendations(budget: BudgetRequest, location: str, currency: Currency):
     recommendations = []
     for city_name, city in get_cities().items():
+        if location == city_name:
+            continue
         extra = get_extra_data(city_name, currency.value)
-        relevant_extra = get_relevant_recommendation_data(budget, currency, extra)
+        relevant_extra = get_relevant_recommendation_data(
+            budget, location, currency, extra
+        )
         recommendation = Recommendation(city=city, budget=budget, data=relevant_extra)
         recommendations.append(recommendation)
-        break
     return RecommendationResponse(recommendations=recommendations)

@@ -1,6 +1,9 @@
+from http import HTTPStatus
+
 import uvicorn
 
 from fastapi import FastAPI
+from starlette.exceptions import HTTPException
 
 from server.app.database import (
     get_cities_response,
@@ -49,9 +52,18 @@ def get_travel_endpoint(
 
 @app.post("/recommendations", response_model=RecommendationResponse)
 def get_travel_recommendations(
-    budget: BudgetRequest, currency: Currency = Currency.HUF
+    budget: BudgetRequest, location: str, currency: Currency = Currency.HUF
 ):
-    return get_recommendations(budget, currency)
+    if budget.people < 1:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "At least 1 person")
+    if budget.budget <= 1:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Need some money in the budget")
+    if budget.nights < 1:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "At least 1 night")
+    if budget.outings < 0:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Cannot have negative outings")
+
+    return get_recommendations(budget, location, currency)
 
 
 if __name__ == "__main__":
