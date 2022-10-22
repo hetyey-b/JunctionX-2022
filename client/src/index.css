@@ -20,6 +20,11 @@
                 hover:bg-buttonBlue hover:text-bgGray transition-colors duration-200
                 font-bold border-2;
     }
+    .formButtonWise {
+        @apply  text-bgGray bg-brandBlue py-1 px-2 rounded 
+                hover:bg-brandBlueHover transition-colors duration-200
+                font-bold border-2;
+    }
     .form {
         @apply absolute bg-bgGray text-wiseNavyBlue animatingUI p-10 rounded-xl shadow-2xl 
     }

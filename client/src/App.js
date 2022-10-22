@@ -9,9 +9,11 @@ import NewTrip from './components/burgerMenuPopups/NewTrip';
 import MyTrips from './components/burgerMenuPopups/MyTrips';
 
 import {FaMapMarkerAlt} from 'react-icons/fa';
+import {MdSavings} from 'react-icons/md'
 import {BiTrip} from 'react-icons/bi';
 import {BsFillPinMapFill} from 'react-icons/bs'
 import SelectedDot from './components/burgerMenuPopups/SelectedDot';
+import TrackedTrips from './components/burgerMenuPopups/TrackedTrips';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -95,6 +97,9 @@ function App() {
   }, [selectedTrip]);
 
   const handleDotSelect = (ind) => {
+    if (ind === -1) {
+      return;
+    }
     setLines([
       {
         from: {
@@ -130,7 +135,44 @@ function App() {
   const closeSelectedDotDisplay = () => {
     closeOpenPopUp();
     setLines([]);
+    setDots([]);
     setSelectedDot(null);
+  }
+
+  const handleOnTrackedTripSelect = (trip) => {
+    setDots([
+      {
+        lon: trip.data.origin.city.long,
+        lat: trip.data.origin.city.lat,
+        color: '#00b9ff',
+        ind: -1,
+      },
+      {
+        lon: trip.data.target.city.long,
+        lat: trip.data.target.city.lat,
+        color: trip.data.target.color,
+        ind: -1,
+      },
+    ]);
+    setLines([
+      {
+        from: {
+          lon: trip.data.origin.city.long,
+          lat: trip.data.origin.city.lat,
+        },
+        to: {
+          lon: trip.data.target.city.long,
+          lat: trip.data.target.city.lat,
+        },
+        color: trip.data.target.color,
+      },
+    ]);
+    setSelectedDot({
+      ...trip.data, 
+      wise: trip.wise,
+    });
+    closeOpenPopUp();
+    setBurgerMenuOpen(false);
   }
 
   return (
@@ -141,6 +183,7 @@ function App() {
         <MyLocation cities={cities} currencies={['HUF', 'EUR']} onClose={closeOpenPopUp} visible={openPopUp === 'MyLocation'}/>
         <NewTrip cities={cities} onClose={closeOpenPopUp} visible={openPopUp === 'NewTrip'} />
         <MyTrips setSelectedTrip={setSelectedTrip} onClose={closeOpenPopUp} visible={openPopUp === 'MyTrips'} />
+        <TrackedTrips visible={openPopUp === 'TrackedTrips'} onClose={closeOpenPopUp} onSelect={handleOnTrackedTripSelect}/>
         <SelectedDot 
           onDotSelect={handleDotSelect}
           onClose={() => closeSelectedDotDisplay()} 
@@ -162,10 +205,15 @@ function App() {
               icon: <BiTrip className='h-[30px] w-[30px]'/>
             },
             {
-              text: 'Saved Trips',
+              text: 'Saved Plans',
               onClick: () => handleMenuPopUpClick('MyTrips'),
               icon: <BsFillPinMapFill className='h-[30px] w-[30px]'/>
             },
+            {
+              text: 'Tracked Savings',
+              onClick: () => handleMenuPopUpClick('TrackedTrips'),
+              icon: <MdSavings className='h-[30px] w-[30px]' />
+            }
           ]}
         />
         <Map
