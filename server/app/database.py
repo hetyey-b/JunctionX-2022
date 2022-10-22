@@ -199,7 +199,7 @@ def get_relevant_recommendation_data(
         )
     data["accommodation"] = [
         {
-            "name": "Accommodation Outside of Centre",
+            "name": f"{budget.accommodation.value} Outside of Centre",
             "mean": rent_to_acc_per_night(
                 cheap_accommodation.mean, budget.accommodation
             )
@@ -212,7 +212,7 @@ def get_relevant_recommendation_data(
             * budget.nights,
         },
         {
-            "name": "Accommodation in City Centre",
+            "name": f"{budget.accommodation.value} in City Centre",
             "mean": rent_to_acc_per_night(
                 expensive_accommodation.mean, budget.accommodation
             )
@@ -232,20 +232,20 @@ def get_relevant_recommendation_data(
         {
             "name": "Travel by airplane",
             "mean": travels.airplane.cost,
-            "low": travels.airplane.cost * 0.77,
-            "high": travels.airplane.cost * 1.21,
+            "low": travels.airplane.cost * 0.60,
+            "high": travels.airplane.cost * 1.5,
         },
         {
             "name": "Travel by Car",
             "mean": travels.car.cost,
-            "low": travels.car.cost * 0.77,
-            "high": travels.car.cost * 1.21,
+            "low": travels.car.cost * 0.9,
+            "high": travels.car.cost * 1.41,
         },
         {
             "name": "Travel by mass transit",
             "mean": travels.transit.cost,
-            "low": travels.transit.cost * 0.77,
-            "high": travels.transit.cost * 1.21,
+            "low": travels.transit.cost * 0.8,
+            "high": travels.transit.cost * 1.15,
         },
     ]
     if budget.outings < 1:
