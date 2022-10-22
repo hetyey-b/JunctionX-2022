@@ -1,4 +1,6 @@
 import datetime
+import os
+from enum import Enum
 from http import HTTPStatus
 
 import geopy.distance
@@ -8,14 +10,18 @@ from server.app.shemas import (
     City,
     Cost,
     CityExtraData,
-    CityResponse,
     CitiesResponse,
     Currency,
     TravelResponse,
     Travel,
+    ExtraDataResponse,
+    BudgetRequest,
+    Recommendation,
 )
+from server.app.utils import get_git_root
 
-db = TinyDB("./server/app/data/db.json")
+
+db = TinyDB(f"{get_git_root(os.getcwd())}/server/app/data/db.json")
 cities_table = db.table("cities")
 cities_extra_data_table = db.table("cities_extra_data")
 
@@ -23,9 +29,9 @@ airplane_speed = 0.222222
 car_speed = 0.0305556
 transit_speed = 0.02270889
 
-car_cost_per_km_in_eur = 0.2407
-transit_cost_per_km_in_eur = 0.275
-plane_cost_per_km_in_eur = 0.350
+car_cost_per_km_in_eur = 0.2207
+transit_cost_per_km_in_eur = 0.175
+plane_cost_per_km_in_eur = 0.2500
 
 eur_to_huf = 411
 
@@ -55,20 +61,18 @@ def get_cities() -> dict[str, City]:
     return {city["name"]: City.parse_obj(city) for city in cities_table.all()}
 
 
-def has_extra_data(name: str, curr: str):
-    query = Query()
-    if cities_extra_data_table.search(query.name == name and query.currency == curr):
-        return True
-    return False
-
-
 def create_city_extra(
     name: str,
     currency: Currency,
     costs: dict[str, list[Cost]],
 ):
     city_extra_data = CityExtraData(name=name, currency=currency, costs=costs)
-    cities_extra_data_table.insert(city_extra_data.dict())
+    cities_extra_data_table.insert(
+        {
+            key: (val.value if isinstance(val, Enum) else val)
+            for key, val in city_extra_data.dict().items()
+        }
+    )
 
 
 def get_cities_extra() -> dict[str, CityExtraData]:
@@ -78,14 +82,23 @@ def get_cities_extra() -> dict[str, CityExtraData]:
     }
 
 
-def get_cities_response(currency: Currency):
-    cities = []
-    for city_name1, city in get_cities().items():
-        for (city_name2, curr), extra in get_cities_extra().items():
-            if curr != currency.value:
-                continue
-            cities.append(CityResponse(city=city, extra=extra))
-    return CitiesResponse(cities=cities)
+def get_extra_data(name: str, currency: str) -> CityExtraData:
+    extra_query = Query()
+    extra = cities_extra_data_table.search(
+        (extra_query.name == name) & (extra_query.currency == currency)
+    )
+    if len(extra) == 1:
+        print(extra[0])
+        return CityExtraData.parse_obj(extra[0])
+    raise HTTPException(HTTPStatus.BAD_REQUEST, f"{name} or {currency} is bad")
+
+
+def get_cities_response() -> CitiesResponse:
+    return CitiesResponse(cities=list(get_cities().values()))
+
+
+def get_extra_data_response(name: str, currency: Currency) -> ExtraDataResponse:
+    return ExtraDataResponse(extra=get_extra_data(name, currency.value))
 
 
 def get_travel(city_from_name: str, city_to_name: str, currency: Currency):
@@ -137,3 +150,28 @@ def get_travel(city_from_name: str, city_to_name: str, currency: Currency):
                 cost=distance * transit_cost_per_km_in_eur * eur_to_huf,
             ),
         )
+
+
+def find(ls, key, value):
+    for obj in ls:
+        if key in obj and obj[key] == value:
+            return obj
+    return None
+
+
+def get_relevant_recommendation_data(budget: BudgetRequest, extra: CityExtraData):
+    daily_cost = 0
+    if budget.people > 3:
+        pass
+    else:
+        pass
+
+
+def get_recommendations(budget: BudgetRequest, currency: Currency):
+    recommendations = []
+    for city_name, city in get_cities().items():
+        extra = get_extra_data(city_name, currency.value)
+        relevant_extra = get_relevant_recommendation_data(budget, extra)
+        recommendation = Recommendation()
+        recommendations.append(recommendation)
+    return recommendations

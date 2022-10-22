@@ -97,7 +97,10 @@ def create_costs(data):
     for cost in data["costs"]:
         name = cost["item"]
         category = category_map(name)
-        mean = float(cost["cost"].replace(",", ""))
+        try:
+            mean = float(cost["cost"].replace(",", ""))
+        except ValueError:
+            mean = 0
         low = 0
         high = 0
         if "range" in cost:
@@ -125,9 +128,6 @@ if __name__ == "__main__":
     load_cities()
     cities = get_cities()
     for city_name in cities:
-        currencies = ["HUF", "EUR"]
+        currencies = [curr.value for curr in Currency]
         for curr in currencies:
-            if has_extra_data(city_name, curr):
-                print("already has", city_name, curr)
-                continue
             get_extra_city_data(city_name, curr)
