@@ -8,34 +8,7 @@ import {
     Marker,
 } from 'react-simple-maps';
 
-const dots = [
-    {
-        lat: 40.416775, //Madrid
-        lon: -3.703790,
-        color: '#ffb619',
-    },
-    {
-        lat: 59.334591,
-        lon: 18.063240,
-        color: '#485cc7',
-    },
-]
-
-const lines = [
-    {
-        color: '#ffb619',
-        from: {
-            lat: 47.497913, //Budapest
-            lon: 19.040236,
-        },
-        to: {
-            lat: 51.509865, //London
-            lon: -0.118092
-        }
-    },
-]
-
-const Map = () => {
+const Map = ({lines, dots}) => {
     const [position, setPosition] = React.useState({ coordinates: [10, 52], zoom: 5 });
 
     function handleOnResetClick() {
