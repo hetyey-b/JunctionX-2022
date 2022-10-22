@@ -47,7 +47,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
                     <option value=''>--Choose City--</option>
                     {
                         cities.map((city) => 
-                            <option value={city.name.toLowerCase()} key={`city-option-${city.name.toLowerCase()}`}>{city.name}</option>
+                            <option value={city.name} key={`city-option-${city.name.toLowerCase()}`}>{city.name}</option>
                         )
                     }
                 </select>
@@ -66,7 +66,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
                     <option value=''>--Choose Currency--</option>
                     {
                         currencies.map(currency => 
-                            <option value={currency.toLowerCase()} key={`currency-option-${currency.toLowerCase()}`}>{currency}</option>
+                            <option value={currency} key={`currency-option-${currency.toLowerCase()}`}>{currency}</option>
                         )
                     }
                 </select>

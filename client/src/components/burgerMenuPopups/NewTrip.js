@@ -2,11 +2,13 @@ import React from 'react';
 
 const NewTrip = ({cities, visible, onClose}) => {
     const [startingCity, setStartingCity] = React.useState(localStorage.getItem('homeCity') || '');
-    const [accommodation, setAccommodation] = React.useState('average'); 
+    const [accommodation, setAccommodation] = React.useState('AIRBNB'); 
     const [onlyCityCenter, setOnlyCityCenter] = React.useState(false);
     const [numberOfTravellers, setNumberOfTravellers] = React.useState(1);
-    const [spendingMoney, setSpendingMoney] = React.useState(localStorage.getItem('currency') === 'huf' ? 20000 : 50);
+    const [outings, setOutings] = React.useState(3);
     const [days,setDays] = React.useState(2);
+    const [budget,setBudget] = React.useState(localStorage.getItem('currency') === 'HUF' ? 200000 : 500);
+    const [currency,setCurrency] = React.useState(localStorage.getItem('currency') || 'EUR');
 
     const handleOnSubmit = (e) => {
         e.preventDefault();
@@ -14,7 +16,7 @@ const NewTrip = ({cities, visible, onClose}) => {
         const myTripsString = localStorage.getItem('myTrips') || '[]';
         const myTrips = JSON.parse(myTripsString);
         localStorage.setItem('myTrips', JSON.stringify([...myTrips, {
-            startingCity, accommodation, onlyCityCenter, numberOfTravellers, spendingMoney, days
+            startingCity, accommodation, onlyCityCenter, outings, days, numberOfTravellers, budget
         }]));
 
         onClose();
@@ -23,8 +25,16 @@ const NewTrip = ({cities, visible, onClose}) => {
     React.useEffect(() => {
         if (visible) {
             setStartingCity(localStorage.getItem('homeCity') || '');
+            setCurrency(localStorage.getItem('currency') || 'EUR');
         }
     }, [visible]);
+    
+    const handleBudgetOnChange = (e) =>{
+        if (e.target.value <= 0) {
+            return;
+        }
+        setBudget(e.target.value);
+    }
     
     const handleDaysOnChange = (e) => {
         if (e.target.value <= 0) {
@@ -58,11 +68,11 @@ const NewTrip = ({cities, visible, onClose}) => {
         setNumberOfTravellers(Math.round(e.target.value));
     }
 
-    const handleSpendingMoneyOnChange = (e) => {
+    const handleOutingsOnChange = (e) => {
         if (e.target.value <= 0) {
             return;
         } 
-        setSpendingMoney(Math.round(e.target.value));
+        setOutings(e.target.value);
     }
 
     return(
@@ -84,7 +94,7 @@ const NewTrip = ({cities, visible, onClose}) => {
                     <option value=''>--Choose City--</option>
                     {
                         cities.map((city) => 
-                            <option value={city.name.toLowerCase()} key={`city-option-${city.name.toLowerCase()}`}>{city.name}</option>
+                            <option value={city.name} key={`city-option-${city.name.toLowerCase()}`}>{city.name}</option>
                         )
                     }
                 </select>
@@ -101,9 +111,8 @@ const NewTrip = ({cities, visible, onClose}) => {
                     value={accommodation}
                     onChange={handleAccommodationOnChange}
                 >
-                    <option value='frugal'>Frugal</option>
-                    <option value='average'>Average</option>
-                    <option value='lavish'>Lavish</option>
+                    <option value='AIRBNB'>Airbnb</option>
+                    <option value='HOTEL'>Hotel</option>
                 </select>
                 
                 <label 
@@ -152,24 +161,40 @@ const NewTrip = ({cities, visible, onClose}) => {
                     />
                 </div>
 
+                <div className='block mt-2'>
+                    <label
+                        htmlFor='outingsInput'
+                        className='formLabel inline-block'
+                    >
+                        Number of outings
+                    </label>
+                    <input
+                        id='outingsInput'
+                        className='formNumber ml-5' 
+                        value={outings}
+                        onChange={handleOutingsOnChange}
+                        step={1}
+                    />
+                </div>
+
                 <div className='mt-2'>
                     <label
-                        htmlFor='spendingMoneyInput'
+                        htmlFor='budgetInput'
                         className='formLabel'
                     >
-                        Spending money
+                        Budget
                     </label>
                     <div
                         className='flex'
                     >
                         <span className='inline-flex items-center rounded-l-lg border-l border-y bg-brandBlueHover px-3'>
-                            {localStorage.getItem('curency') || 'EUR'}
+                            {currency}
                         </span>
                         <input
-                            id='spendingMoneyInput'
+                            id='budgetInput'
                             className='formNumber rounded-l-none'
-                            value={spendingMoney}
-                            onChange={handleSpendingMoneyOnChange}
+                            value={budget}
+                            onChange={handleBudgetOnChange}
                             step={1}
                         />
                     </div>
