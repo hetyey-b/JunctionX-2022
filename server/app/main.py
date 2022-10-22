@@ -24,8 +24,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
 
 from server.app.wise import (
-    get_wise_user_profile,
-    get_balance,
     topup_balance,
     create_saving_account,
     get_savings,
