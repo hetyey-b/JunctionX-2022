@@ -1,4 +1,4 @@
-const recommendationFilter = (recommendations, onlyCityCenter) => {
+export const recommendationFilter = (recommendations, onlyCityCenter) => {
     const colors = recommendations.map((recommendation) => {
         if (!recommendation.data || Object.keys(recommendation.data).length === 0) {
             return {...recommendation, color: 'blue', greenSum: 0, yellowSum: 0};
@@ -37,5 +37,3 @@ const recommendationFilter = (recommendations, onlyCityCenter) => {
     return colors;
 }
 
-
-module.exports = recommendationFilter;

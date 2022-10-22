@@ -1,7 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import Map from './components/Map';
-import recommendationFilter from './util/recommendationFilter';
+import {recommendationFilter} from './util/recommendationFilter';
 
 import BurgerMenu from './components/BurgerMenu';
 import MyLocation from './components/burgerMenuPopups/MyLocation';
@@ -106,7 +106,6 @@ function App() {
       closeOpenPopUp();
       return;
     }
-
     setOpenPopUp(popUpName);
   }
 
