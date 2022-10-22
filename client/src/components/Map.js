@@ -96,7 +96,7 @@ const Map = ({lines, dots, onClick}) => {
                                 coordinates={[dot.lon, dot.lat]}
                                 key={`dot-${dot.lon},${dot.lat}`}
                             >
-                                <circle r={1} fill={dot.color} />
+                                <circle r={0.75} fill={dot.color} />
                             </Marker> 
                         ))
                     }

@@ -6,6 +6,18 @@
     .animatingUI {
         @apply ease-in-out duration-300;
     }
+    .formLabel {
+        @apply my-2 uppercase font-bold;
+    }
+    .formNumber {
+        @apply bg-brandBlue border border-bgGray rounded-lg inline-block p-2.5 uppercase;
+    }
+    .formSelect {
+        @apply bg-brandBlue border border-bgGray rounded-lg block w-full p-2.5 uppercase;
+    }
+    .formButton {
+        @apply border border-bgGray py-1 px-2 rounded hover:bg-brandBlueHover;
+    }
 }
 
 .rsm-svg {

@@ -34,7 +34,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
             <form onSubmit={handleOnSubmit}>
                 <label 
                     htmlFor='citySelect'
-                    className='block mb-2 uppercase font-bold'
+                    className='formLabel block'
                 >
                     City
                 </label>
@@ -42,7 +42,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
                     id='citySelect'
                     value={selectedCity} 
                     onChange={handleCityOnChange}
-                    className='bg-brandBlue border border-bgGray rounded-lg block w-full p-2.5 uppercase'
+                    className='formSelect'
                 >
                     <option value=''>--Choose City--</option>
                     {
@@ -53,7 +53,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
                 </select>
                 <label 
                     htmlFor='currencySelect'
-                    className='block my-2 uppercase font-bold'
+                    className='formLabel block'
                 >
                     Currency
                 </label>
@@ -61,7 +61,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
                     id='currencySelect'
                     value={selectedCurrency} 
                     onChange={handleCurrencyOnChange}
-                    className='bg-brandBlue border border-bgGray rounded-lg block w-full p-2.5 uppercase'
+                    className='formSelect'
                 >
                     <option value=''>--Choose Currency--</option>
                     {
@@ -71,8 +71,8 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
                     }
                 </select>
                 <div className='flex justify-between mt-8'>
-                    <button type='button' onClick={onClose} className='border border-bgGray py-1 px-2 rounded hover:bg-brandBlueHover'>Cancel</button>
-                    <button type='submit' onClick={handleOnSubmit} className='border border-bgGray py-1 px-2 rounded hover:bg-brandBlueHover'>Save</button>
+                    <button type='button' onClick={onClose} className='formButton'>Cancel</button>
+                    <button type='submit' onClick={handleOnSubmit} className='formButton'>Save</button>
                 </div>
             </form>
         </div>
