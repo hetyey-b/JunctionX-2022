@@ -1,7 +1,10 @@
 FROM python:3.10.6-slim
+RUN apt-get -y update
+RUN apt-get -y install git
 
 WORKDIR /server
 
+ENV GIT_PYTHON_REFRESH "quite"s
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
