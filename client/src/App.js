@@ -19,6 +19,7 @@ function App() {
   const [cities, setCities] = React.useState([]);
   const [dots, setDots] = React.useState([]);
   const [lines, setLines] = React.useState([]);
+  const [selectedTrip, setSelectedTrip] = React.useState(null);
   
   React.useEffect(() => {
     if (localStorage.getItem('currency') === '') {
@@ -46,7 +47,13 @@ function App() {
     }
 
     fetchCities();
-  }, [])
+  }, []);
+
+  // React.useEffect(() => {
+  //   const fetchTripResults = async () => {
+  //     const response = await 
+  //   }
+  // }, [selectedTrip]);
 
   const handleMenuPopUpClick = (popUpName) => {
     if (openPopUp === popUpName) {
@@ -68,6 +75,7 @@ function App() {
       <div>
         <MyLocation cities={cities} currencies={['HUF', 'EUR']} onClose={closeOpenPopUp} visible={openPopUp === 'MyLocation'}/>
         <NewTrip cities={cities} onClose={closeOpenPopUp} visible={openPopUp === 'NewTrip'} />
+        <MyTrips setSelectedTrip={setSelectedTrip} onClose={closeOpenPopUp} visible={openPopUp === 'MyTrips'} />
         <BurgerMenu 
           open={burgerMenuOpen}
           setOpen={setBurgerMenuOpen}
@@ -84,7 +92,7 @@ function App() {
             },
             {
               text: 'Saved Trips',
-              onClick: () => console.log('Saved Trips'),
+              onClick: () => handleMenuPopUpClick('MyTrips'),
               icon: <BsFillPinMapFill className='h-[30px] w-[30px]'/>
             },
           ]}

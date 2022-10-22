@@ -4,19 +4,34 @@ const NewTrip = ({cities, visible, onClose}) => {
     const [startingCity, setStartingCity] = React.useState(localStorage.getItem('homeCity') || '');
     const [accommodation, setAccommodation] = React.useState('average'); 
     const [onlyCityCenter, setOnlyCityCenter] = React.useState(false);
-    const [numberofTravellers, setNumberOfTravellers] = React.useState(1);
-    const [spendingMoney, setSpendingMoney] = React.useState(localStorage.getItem('currency') === 'eur' ? 50 : 20000);
+    const [numberOfTravellers, setNumberOfTravellers] = React.useState(1);
+    const [spendingMoney, setSpendingMoney] = React.useState(localStorage.getItem('currency') === 'huf' ? 20000 : 50);
+    const [days,setDays] = React.useState(2);
 
     const handleOnSubmit = (e) => {
         e.preventDefault();
-        
-        const myTrips = localStorage.getItem('myTrips') || [];
-        localStorage.setItem('myTrips', [...myTrips, {
-            startingCity, accommodation, onlyCityCenter, numberofTravellers, spendingMoney
-        }]);
+       
+        const myTripsString = localStorage.getItem('myTrips') || '[]';
+        const myTrips = JSON.parse(myTripsString);
+        localStorage.setItem('myTrips', JSON.stringify([...myTrips, {
+            startingCity, accommodation, onlyCityCenter, numberOfTravellers, spendingMoney, days
+        }]));
 
         onClose();
-    } 
+    }
+
+    React.useEffect(() => {
+        if (visible) {
+            setStartingCity(localStorage.getItem('homeCity') || '');
+        }
+    }, [visible]);
+    
+    const handleDaysOnChange = (e) => {
+        if (e.target.value <= 0) {
+            return;
+        }
+        setDays(e.target.value);
+    }
     
     const handleStartingCityOnChange = (e) => {
         if (e.target.value === '') {
@@ -105,19 +120,37 @@ const NewTrip = ({cities, visible, onClose}) => {
                     Only in city center
                 </label>
 
-                <label
-                    htmlFor='numberOfTravellersInput'
-                    className='formLabel inline-block'
-                >
-                    Number of travellers
-                </label>
-                <input
-                    id='numberOfTravellersInput'
-                    className='formNumber ml-5' 
-                    value={numberofTravellers}
-                    onChange={handleNumberOfTravellersOnChange}
-                    step={1}
-                />
+                <div className='block'>
+                    <label
+                        htmlFor='daysInput'
+                        className='formLabel inline-block'
+                    >
+                        Nights
+                    </label>
+                    <input
+                        id='daysInput'
+                        className='formNumber ml-5' 
+                        value={days}
+                        onChange={handleDaysOnChange}
+                        step={1}
+                    />
+                </div>
+
+                <div className='block mt-2'>
+                    <label
+                        htmlFor='numberOfTravellersInput'
+                        className='formLabel inline-block'
+                    >
+                        Number of travellers
+                    </label>
+                    <input
+                        id='numberOfTravellersInput'
+                        className='formNumber ml-5' 
+                        value={numberOfTravellers}
+                        onChange={handleNumberOfTravellersOnChange}
+                        step={1}
+                    />
+                </div>
 
                 <div className='mt-2'>
                     <label
@@ -130,7 +163,7 @@ const NewTrip = ({cities, visible, onClose}) => {
                         className='flex'
                     >
                         <span className='inline-flex items-center rounded-l-lg border-l border-y bg-brandBlueHover px-3'>
-                            HUF
+                            {localStorage.getItem('curency') || 'EUR'}
                         </span>
                         <input
                             id='spendingMoneyInput'
