@@ -9,7 +9,7 @@ import {
 } from 'react-simple-maps';
 import {ImUndo} from 'react-icons/im';
 
-const Map = ({lines, dots}) => {
+const Map = ({lines, dots, onClick}) => {
     const [position, setPosition] = React.useState({ coordinates: [10, 52], zoom: 5 });
 
     function handleOnResetClick() {
@@ -21,7 +21,7 @@ const Map = ({lines, dots}) => {
     }
 
     return(
-        <div className='border border-solid border-sky-500'>
+        <div className='border border-solid border-sky-500' onClick={onClick}>
             <button 
                 onClick={handleOnResetClick}
                 className='absolute bg-brandBlue hover:bg-brandBlueHover p-2 text-bgGray rounded bottom-3 right-4'
