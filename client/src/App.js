@@ -9,41 +9,26 @@ import {FaMapMarkerAlt} from 'react-icons/fa';
 import {BiTrip} from 'react-icons/bi';
 import {BsFillPinMapFill} from 'react-icons/bs'
 
-const dots = [
-    {
-        lat: 40.416775, //Madrid
-        lon: -3.703790,
-        color: '#ffb619',
-    },
-    {
-        lat: 59.334591,
-        lon: 18.063240,
-        color: '#ffb619',
-    },
-]
-
-const lines = [
-    {
-        color: '#ffb619',
-        from: {
-            lat: 47.497913, //Budapest
-            lon: 19.040236,
-        },
-        to: {
-            lat: 51.509865, //London
-            lon: -0.118092
-        }
-    },
-]
-
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 function App() {
   const [burgerMenuOpen, setBurgerMenuOpen] = React.useState(false);
   const [openPopUp, setOpenPopUp] = React.useState(null);
-  const [cities, setCities] = React.useState([
-    'Madrid', 'Budapest', 'Stockholm', 'Helsinki', 'Amsterdam', 'London', 'Paris'
-  ]);
+  const [cities, setCities] = React.useState([]);
+  const [dots, setDots] = React.useState([]);
+  const [lines, setLines] = React.useState([]);
+  
+  React.useEffect(() => {
+    const fetchCities = async () => {
+      const response = await axios.get(`${BACKEND_URL}/cities`);
+      
+      if (response.status === 200) {
+        setCities(response.data.cities);
+      }
+    }
+
+    fetchCities();
+  }, [])
 
   const closeOpenPopUp = () => {
     setOpenPopUp(null);
