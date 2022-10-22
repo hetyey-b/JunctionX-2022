@@ -77,6 +77,18 @@ const Map = ({lines, dots, onClick, onDotSelect}) => {
                     </Geographies>
 
                     {
+                        dots.map((dot) => (
+                            <Marker 
+                                coordinates={[dot.lon, dot.lat]}
+                                key={`dot-${dot.lon},${dot.lat}`}
+                                className='cursor-pointer'
+                                onClick={() => onDotSelect(dot.ind)}
+                            >
+                                <circle r={0.75} fill={dot.color} />
+                            </Marker> 
+                        ))
+                    }
+                    {
                         lines.map((line) => (
                             <Line 
                                 from={[line.from.lon, line.from.lat]}
@@ -87,18 +99,6 @@ const Map = ({lines, dots, onClick, onDotSelect}) => {
                                 strokeLinecap='round'
                                 key={`line-${line.from.lon},${line.from.lat}-${line.to.lon},${line.to.lat}`}
                             />
-                        ))
-                    }
-                    {
-                        dots.map((dot) => (
-                            <Marker 
-                                coordinates={[dot.lon, dot.lat]}
-                                key={`dot-${dot.lon},${dot.lat}`}
-                                className='cursor-pointer'
-                                onClick={() => onDotSelect(dot.ind)}
-                            >
-                                <circle r={0.75} fill={dot.color} />
-                            </Marker> 
                         ))
                     }
                 </ZoomableGroup>

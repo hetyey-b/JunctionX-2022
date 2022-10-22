@@ -24,7 +24,7 @@ const MyTrips = ({setSelectedTrip,visible,onClose}) => {
                     trips.map((trip,ind) => 
                         <li
                             key={`myTrip-li-${ind}-${trip.startingCity}`}
-                            className={`flex justify-between cursor-pointer hover:bg-brandBlueHover
+                            className={`flex justify-between cursor-pointer hover:text-wiseNavyHighlight
                                         ${ind===0 ? 'rounded-t-lg' : ''} ${ind===trips.length - 1 ? 'rounded-b-lg' : ''}
                                         uppercase w-full h-[50px] font-lg inline-flex items-center text-center 
                                         px-4 border-b border-x ${ind===0?'border-t':''}`}

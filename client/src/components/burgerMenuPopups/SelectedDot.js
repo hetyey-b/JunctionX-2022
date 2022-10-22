@@ -17,7 +17,7 @@ const SelectedDot = ({data,visible,onClose}) => {
         return <div></div>
     }
     return (
-        <div className={`top-[5%] left-[54%] w-[45vw] form ${visible ? 'scale-100' : 'scale-0'} text-lg`}>
+        <div className={`top-[5%] left-[43%] w-[55vw] form ${visible ? 'scale-100' : 'scale-0'} text-lg`}>
             <h1 className='uppercase font-bold text-xl'>{data.target.city.name} ({data.target.city.country})</h1>
             <span className='block italic'>Leaving from {data.origin.city.name} ({data.origin.city.country})</span>
             <hr className='my-2 border-t-disabledGray'/>
@@ -53,7 +53,7 @@ const SelectedDot = ({data,visible,onClose}) => {
             <div className='flex justify-between'>
                 <span>Overall estimate</span>
                 <span>{
-                    `${formatNumber(data.target.greenSum)} - ${formatNumber(data.target.yellowSum)} ${localStorage.getItem('currency') || 'EUR'}` 
+                    `${formatNumber(data.target.yellowSum)} - ${formatNumber(data.target.greenSum)} ${localStorage.getItem('currency') || 'EUR'}` 
                 }</span>
             </div>
         
