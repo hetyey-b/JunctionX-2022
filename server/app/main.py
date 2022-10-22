@@ -14,13 +14,16 @@ from server.app.shemas import (
     TravelResponse,
     ExtraDataResponse,
     BudgetRequest,
+    RecommendationResponse,
 )
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
 
 app = FastAPI()
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(ExceptionMiddleware)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 @app.get("/cities/", response_model=CitiesResponse)
@@ -44,7 +47,7 @@ def get_travel_endpoint(
     )
 
 
-@app.get("/recommendations/", response_model=BudgetRequest)
+@app.post("/recommendations", response_model=RecommendationResponse)
 def get_travel_recommendations(
     budget: BudgetRequest, currency: Currency = Currency.HUF
 ):

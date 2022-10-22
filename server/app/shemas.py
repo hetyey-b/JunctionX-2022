@@ -66,4 +66,8 @@ class BudgetRequest(BaseModel):
 class Recommendation(BaseModel):
     city: City
     budget: BudgetRequest
-    cost: float
+    data: dict[str, list[Cost]]
+
+
+class RecommendationResponse(BaseModel):
+    recommendations: list[Recommendation]
