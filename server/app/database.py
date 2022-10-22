@@ -334,6 +334,8 @@ def get_recommendations(budget: BudgetRequest, location: str, currency: Currency
     recommendations = []
     for city_name, city in get_cities().items():
         if location == city_name:
+            recommendation = Recommendation(city=city, budget=budget, data=[])
+            recommendations.append(recommendation)
             continue
         extra = get_extra_data(city_name, currency.value)
         relevant_extra = get_relevant_recommendation_data(
