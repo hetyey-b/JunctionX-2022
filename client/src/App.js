@@ -1,4 +1,5 @@
 import Map from './components/Map';
+import BurgerMenu from './components/BurgerMenu';
 
 const dots = [
     {
@@ -27,6 +28,8 @@ const lines = [
     },
 ]
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
 function App() {
   return (
     <div 
@@ -35,6 +38,7 @@ function App() {
                   px-[2vw] pt-5'
     >
       <div>
+        <BurgerMenu />
         <Map
          lines={lines}
          dots={dots} 
