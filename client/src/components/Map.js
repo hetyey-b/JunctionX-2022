@@ -7,6 +7,7 @@ import {
     Line,
     Marker,
 } from 'react-simple-maps';
+import {ImUndo} from 'react-icons/im';
 
 const Map = ({lines, dots}) => {
     const [position, setPosition] = React.useState({ coordinates: [10, 52], zoom: 5 });
@@ -23,9 +24,21 @@ const Map = ({lines, dots}) => {
         <div className='border border-solid border-sky-500'>
             <button 
                 onClick={handleOnResetClick}
-                className='absolute bg-brandBlue hover:bg-brandBlueHover px-2 py-1 text-bgGray m-2 rounded bottom-8 right-10'
+                className='absolute bg-brandBlue hover:bg-brandBlueHover p-2 text-bgGray m-2 rounded bottom-8 right-10'
+                style={{
+                    display:
+                        (
+                            position.coordinates[0] === 10 &&
+                            position.coordinates[1] === 52 &&
+                            position.zoom === 5
+                        ) ?
+                        'none' :
+                        ''
+                }}
             >
-                Reset
+                <ImUndo 
+                    className={'text-bgGray h-[30px] w-[30px]'}
+                />
             </button>
             <ComposableMap>
                 <ZoomableGroup
