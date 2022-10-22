@@ -1,7 +1,7 @@
 const recommendationFilter = (recommendations, onlyCityCenter) => {
     const colors = recommendations.map((recommendation) => {
-        if (!recommendation.data) {
-            return {recommendation, color: 'blue', greenSum: 0, yellowSum: 0};
+        if (!recommendation.data || Object.keys(recommendation.data).length === 0) {
+            return {...recommendation, color: 'blue', greenSum: 0, yellowSum: 0};
         }
 
         let greenSum = 0;
