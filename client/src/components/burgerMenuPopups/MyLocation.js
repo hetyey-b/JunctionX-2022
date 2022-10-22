@@ -27,8 +27,7 @@ const MyLocation = ({cities, currencies, onClose, visible}) => {
     }
 
     return (
-        <div className={`absolute bg-brandBlue top-1/3 left-1/2 w-[30vw] p-10 rounded-xl shadow-2xl
-                        text-bgGray ${visible ? 'scale-100' : 'scale-0'} animatingUI`}>
+        <div className={`w-[30vw] top-1/3 left-1/2 form ${visible ? 'scale-100' : 'scale-0'} `}>
             <form onSubmit={handleOnSubmit}>
                 <label 
                     htmlFor='citySelect'

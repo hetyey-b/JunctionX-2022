@@ -10,6 +10,9 @@ module.exports = {
         brandBlueHover: '#00a4df',
         brandBlueDown: '#008ec0',
 
+        buttonBlue: '#008FC9',
+
+        wiseNavyHighlight: '#18A0CC',
         wiseNavyBlue: '#37517e', // used a lot
         wiseNavyMid: '#2e4369',
         wiseNavyDark: '#253655',

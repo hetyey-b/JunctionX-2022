@@ -6,12 +6,16 @@ const myData = {
     mean:21397.95
 }
 
+const formatNumber = (num) => {
+    return Number(Math.round(num)).toLocaleString();
+}
+
 const CostAverageDisplay = ({data}) => {
     return(
         <div className='inline-block'>
-            <span className='inline-block mr-8'>{Math.round(data.mean)} {localStorage.getItem('currency')}</span>
+            <span className='inline-block mr-6'>{formatNumber(data.mean)} {localStorage.getItem('currency')}</span>
             <div className='inline-block'>
-                {Math.round(data.low)} {localStorage.getItem('currency')}
+                {formatNumber(data.low)} {localStorage.getItem('currency')}
                 <div 
                     className='bg-wiseGreen w-[100px] rounded-full h-2.5 inline-block mx-2' 
                 >
@@ -22,7 +26,7 @@ const CostAverageDisplay = ({data}) => {
                         }}
                     />
                 </div>
-                {Math.round(data.high)} {localStorage.getItem('currency')}
+                {formatNumber(data.high)} {localStorage.getItem('currency')}
             </div>
         </div>
     )

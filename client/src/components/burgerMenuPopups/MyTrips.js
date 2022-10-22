@@ -18,8 +18,7 @@ const MyTrips = ({setSelectedTrip,visible,onClose}) => {
     } 
 
     return(
-        <div className={`absolute bg-brandBlue w-[33vw] max-h-[40vh] overflow-y-scroll top-1/3 left-1/2 p-1 rounded-xl shadow-2xl
-                        text-bgGray ${visible ? 'scale-100' : 'scale-0'} animatingUI`}>
+        <div className={`w-[33vw] max-h-[40vh] overflow-y-scroll top-1/3 left-1/2 form p-1 ${visible ? 'scale-100' : 'scale-0'}`}>
             <ul>
                 {
                     trips.map((trip,ind) => 
