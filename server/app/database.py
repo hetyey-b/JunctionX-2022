@@ -17,6 +17,8 @@ from server.app.shemas import (
     ExtraDataResponse,
     BudgetRequest,
     Recommendation,
+    RecommendationResponse,
+    AccommodationType,
 )
 from server.app.utils import get_git_root
 
@@ -34,6 +36,22 @@ transit_cost_per_km_in_eur = 0.175
 plane_cost_per_km_in_eur = 0.2500
 
 eur_to_huf = 411
+
+
+def to_curr(cost_in_eur: float, curr: Currency) -> float:
+    if curr == Currency.EUR:
+        return cost_in_eur
+    elif curr == Currency.HUF:
+        return cost_in_eur * eur_to_huf
+
+
+def rent_to_acc(cost_in_eur: float, curr: Currency, acc: AccommodationType) -> float:
+    cost_in_curr_per_day = to_curr(cost_in_eur, curr) / 31
+    if acc == AccommodationType.HOTEL:
+        return cost_in_curr_per_day * 1.5
+    elif acc == AccommodationType.AIRBNB:
+        return cost_in_curr_per_day * 1.3
+    assert False
 
 
 def create_city(
@@ -112,66 +130,83 @@ def get_travel(city_from_name: str, city_to_name: str, currency: Currency):
     distance = geopy.distance.geodesic(
         (city_from.lat, city_from.long), (city_to.lat, city_to.long)
     ).km
-    if currency == Currency.EUR:
-        return TravelResponse(
-            distance=distance,
-            airplane=Travel(
-                time=str(datetime.timedelta(seconds=distance / airplane_speed)),
-                currency=currency,
-                cost=distance * plane_cost_per_km_in_eur,
-            ),
-            car=Travel(
-                time=str(datetime.timedelta(seconds=distance / car_speed)),
-                currency=currency,
-                cost=distance * car_cost_per_km_in_eur,
-            ),
-            transit=Travel(
-                time=str(datetime.timedelta(seconds=distance / transit_speed)),
-                currency=currency,
-                cost=distance * transit_cost_per_km_in_eur,
-            ),
-        )
-    elif currency == Currency.HUF:
-        return TravelResponse(
-            distance=distance,
-            airplane=Travel(
-                time=str(datetime.timedelta(seconds=distance / airplane_speed)),
-                currency=currency,
-                cost=distance * plane_cost_per_km_in_eur * eur_to_huf,
-            ),
-            car=Travel(
-                time=str(datetime.timedelta(seconds=distance / car_speed)),
-                currency=currency,
-                cost=distance * car_cost_per_km_in_eur * eur_to_huf,
-            ),
-            transit=Travel(
-                time=str(datetime.timedelta(seconds=distance / transit_speed)),
-                currency=currency,
-                cost=distance * transit_cost_per_km_in_eur * eur_to_huf,
-            ),
-        )
+    return TravelResponse(
+        distance=distance,
+        airplane=Travel(
+            time=str(datetime.timedelta(seconds=distance / airplane_speed)),
+            currency=currency,
+            cost=to_curr(distance * plane_cost_per_km_in_eur, currency),
+        ),
+        car=Travel(
+            time=str(datetime.timedelta(seconds=distance / car_speed)),
+            currency=currency,
+            cost=to_curr(distance * car_cost_per_km_in_eur, currency),
+        ),
+        transit=Travel(
+            time=str(datetime.timedelta(seconds=distance / transit_speed)),
+            currency=currency,
+            cost=to_curr(distance * transit_cost_per_km_in_eur, currency),
+        ),
+    )
 
 
 def find(ls, key, value):
     for obj in ls:
-        if key in obj and obj[key] == value:
+        if hasattr(obj, key) and getattr(obj, key) == value:
             return obj
-    return None
+    raise Exception()
 
 
-def get_relevant_recommendation_data(budget: BudgetRequest, extra: CityExtraData):
-    daily_cost = 0
+def get_relevant_recommendation_data(
+    budget: BudgetRequest, curr: Currency, extra: CityExtraData
+):
+    data = {}
     if budget.people > 3:
-        pass
+        cheap = find(
+            extra.costs["Rent Per Month"],
+            "name",
+            "Apartment (3 bedrooms) Outside of Centre",
+        )
+        expensive = find(
+            extra.costs["Rent Per Month"],
+            "name",
+            "Apartment (3 bedrooms) in City Centre",
+        )
     else:
-        pass
+        cheap = find(
+            extra.costs["Rent Per Month"],
+            "name",
+            "Apartment (1 bedroom) Outside of Centre",
+        )
+        expensive = find(
+            extra.costs["Rent Per Month"],
+            "name",
+            "Apartment (1 bedroom) in City Centre",
+        )
+    data["accommodation"] = [
+        {
+            "name": "Cheap accommodation",
+            "mean": rent_to_acc(cheap.mean, curr, budget.accommodation),
+            "low": rent_to_acc(cheap.low, curr, budget.accommodation),
+            "high": rent_to_acc(cheap.high, curr, budget.accommodation),
+        },
+        {
+            "name": "Expensive accommodation",
+            "mean": rent_to_acc(expensive.mean, curr, budget.accommodation),
+            "low": rent_to_acc(expensive.low, curr, budget.accommodation),
+            "high": rent_to_acc(expensive.high, curr, budget.accommodation),
+        },
+    ]
+
+    return data
 
 
 def get_recommendations(budget: BudgetRequest, currency: Currency):
     recommendations = []
     for city_name, city in get_cities().items():
         extra = get_extra_data(city_name, currency.value)
-        relevant_extra = get_relevant_recommendation_data(budget, extra)
-        recommendation = Recommendation()
+        relevant_extra = get_relevant_recommendation_data(budget, currency, extra)
+        recommendation = Recommendation(city=city, budget=budget, data=relevant_extra)
         recommendations.append(recommendation)
-    return recommendations
+        break
+    return RecommendationResponse(recommendations=recommendations)
