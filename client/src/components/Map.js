@@ -24,7 +24,7 @@ const Map = ({lines, dots}) => {
         <div className='border border-solid border-sky-500'>
             <button 
                 onClick={handleOnResetClick}
-                className='absolute bg-brandBlue hover:bg-brandBlueHover p-2 text-bgGray m-2 rounded bottom-8 right-10'
+                className='absolute bg-brandBlue hover:bg-brandBlueHover p-2 text-bgGray rounded bottom-3 right-4'
                 style={{
                     display:
                         (
