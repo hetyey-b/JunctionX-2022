@@ -23,6 +23,15 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
 
+from server.app.wise import (
+    get_wise_user_profile,
+    get_balance,
+    topup_balance,
+    create_saving_account,
+    get_savings,
+    delete_balance,
+)
+
 app = FastAPI()
 app.add_middleware(ExceptionMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
@@ -64,6 +73,30 @@ def get_travel_recommendations(
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Cannot have negative outings")
 
     return get_recommendations(budget, location, currency)
+
+
+@app.post("/create-savings", response_model=int, status_code=HTTPStatus.CREATED)
+def create_savings_account(
+    token: str, account_name: str, currency: Currency = Currency.HUF
+):
+    return create_saving_account(token, account_name, currency)
+
+
+@app.get("/savings")
+def get_savings_balance(token: str, balance_id: int | None = None):
+    return get_savings(token, balance_id)
+
+
+@app.delete("/savings")
+def delete__balance(token: str, balance_id: int):
+    return delete_balance(token, balance_id)
+
+
+@app.get("/topup")
+def topop_account(
+    token: str, balance_id: int, amount: float, currency: Currency = Currency.HUF
+):
+    return topup_balance(token, balance_id, amount, currency)
 
 
 if __name__ == "__main__":
