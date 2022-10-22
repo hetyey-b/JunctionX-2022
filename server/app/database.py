@@ -15,7 +15,7 @@ from server.app.shemas import (
     Travel,
 )
 
-db = TinyDB("./data/db.json")
+db = TinyDB("./server/app/data/db.json")
 cities_table = db.table("cities")
 cities_extra_data_table = db.table("cities_extra_data")
 

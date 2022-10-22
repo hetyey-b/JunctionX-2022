@@ -2,7 +2,6 @@ import uvicorn
 
 from fastapi import FastAPI
 
-from env import settings
 from server.app.database import get_cities_response, get_travel
 from server.app.shemas import CitiesResponse, Currency, TravelResponse
 
@@ -29,7 +28,8 @@ if __name__ == "__main__":
     uvicorn.run(
         "server.app.main:app",
         reload=True,
-        port=settings.SERVER_PORT,
-        log_level=settings.LOG_LEVEL,
+        port=8000,
+        host="0.0.0.0",
+        log_level="info",
         workers=1,
     )
