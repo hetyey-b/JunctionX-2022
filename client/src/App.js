@@ -4,6 +4,8 @@ import Map from './components/Map';
 
 import BurgerMenu from './components/BurgerMenu';
 import MyLocation from './components/burgerMenuPopups/MyLocation';
+import NewTrip from './components/burgerMenuPopups/NewTrip';
+import MyTrips from './components/burgerMenuPopups/MyTrips';
 
 import {FaMapMarkerAlt} from 'react-icons/fa';
 import {BiTrip} from 'react-icons/bi';
@@ -19,16 +21,41 @@ function App() {
   const [lines, setLines] = React.useState([]);
   
   React.useEffect(() => {
+    if (localStorage.getItem('currency') === '') {
+      localStorage.setItem('currency', 'eur');
+    }
+
+    if (!localStorage.getItem('myTrips')) {
+      localStorage.setItem('myTrips', []);
+    }
+
     const fetchCities = async () => {
       const response = await axios.get(`${BACKEND_URL}/cities`);
       
       if (response.status === 200) {
         setCities(response.data.cities);
       }
+
+      setDots(response.data.cities.map((city) => {
+        return {
+          lon: city.long,
+          lat: city.lat,
+          color: '#ffb619',
+        }
+      }))
     }
 
     fetchCities();
   }, [])
+
+  const handleMenuPopUpClick = (popUpName) => {
+    if (openPopUp === popUpName) {
+      closeOpenPopUp();
+      return;
+    }
+
+    setOpenPopUp(popUpName);
+  }
 
   const closeOpenPopUp = () => {
     setOpenPopUp(null);
@@ -40,24 +67,19 @@ function App() {
     >
       <div>
         <MyLocation cities={cities} currencies={['HUF', 'EUR']} onClose={closeOpenPopUp} visible={openPopUp === 'MyLocation'}/>
+        <NewTrip cities={cities} onClose={closeOpenPopUp} visible={openPopUp === 'NewTrip'} />
         <BurgerMenu 
           open={burgerMenuOpen}
           setOpen={setBurgerMenuOpen}
           content={[
             {
               text: 'My Location',
-              onClick: () => {
-                if (openPopUp === 'MyLocation') {
-                  closeOpenPopUp();
-                  return;
-                }
-                setOpenPopUp('MyLocation')
-              },
+              onClick: () => handleMenuPopUpClick('MyLocation'),
               icon: <FaMapMarkerAlt className='h-[30px] w-[30px]'/>
             },
             {
               text: 'Plan Trip',
-              onClick: () => console.log('Plan Trip'),
+              onClick: () => handleMenuPopUpClick('NewTrip'),
               icon: <BiTrip className='h-[30px] w-[30px]'/>
             },
             {
