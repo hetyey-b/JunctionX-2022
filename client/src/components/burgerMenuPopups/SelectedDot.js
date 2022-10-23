@@ -63,7 +63,6 @@ const SelectedDot = ({data,visible,onClose}) => {
             <hr className='my-2 border-t-disabledGray'/>
             <span className='block'>{data.target.budget.nights} nights / {data.target.budget.people} people</span>
             <hr className='my-2 border-t-disabledGray'/>
-            <span className='block'>Accommodation in {data.target.budget.accommodation}</span>
             <ul>
                 {
                     data.target.data.accommodation.map((accommodation) =>
