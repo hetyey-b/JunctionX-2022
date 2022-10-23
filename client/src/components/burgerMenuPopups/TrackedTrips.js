@@ -52,6 +52,7 @@ const TrackedTrips = ({visible, onClose, onSelect}) => {
                     >
                         <span className='font-bold'>{el.wise[0].name}</span>
                         <span>{el.wise[0].amount.value} {el.wise[0].amount.currency}</span>
+                        <span className='italic'>Leaving from {el.data.origin.city.name} ({el.data.origin.city.country})</span>
                     </div>
                 )
             }
