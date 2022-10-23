@@ -45,7 +45,7 @@ const SelectedDot = ({data,visible,onClose}) => {
         <div className={`top-[5%] left-[43%] w-[55vw] form ${visible ? 'scale-100' : 'scale-0'} text-lg`}>
             <h1 className='uppercase font-bold text-xl'>
                 {
-                    data.wise[0] ? 
+                    data.wise && data.wise[0] ? 
                     data.wise[0].name :
                     `${data.target.city.name} (${data.target.city.country})`
                 }
